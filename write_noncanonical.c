@@ -115,6 +115,21 @@ int main(int argc, char *argv[])
     // Wait until all bytes have been written to the serial port
     sleep(1);
 
+    unsigned char response[BUF_SIZE] = {0};
+    int response_bytes = read(fd, response, BUF_SIZE);
+
+    if (response_bytes > 0) {
+        if (response[0] == FLAG && response[1] == ADDRESS_RECEIVER && response[2] == CONTROL_UA && response[3] == (ADDRESS_RECEIVER ^ CONTROL_UA) && response[4] == FLAG) {
+            printf("Received UA frame successfully.\n");
+        }
+        else {
+            printf("Received an unexpected frame.\n");
+        }
+    }
+    else {
+        printf("No frame received.\n");
+    }
+
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
     {

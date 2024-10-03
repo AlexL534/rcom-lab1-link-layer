@@ -107,9 +107,10 @@ int main(int argc, char *argv[])
         if (buf[0] == FLAG && buf[1] == ADDRESS_SENDER && buf[2] == CONTROL_SET && buf[4] == FLAG) {
             unsigned char bcc = buf[1] ^ buf[2];
             if (buf[3] == bcc) {
-                unsigned char uaFrame[5] = {FLAG, ADDRESS_RECEIVER, CONTROL_UA, 0X00, FLAG};
+                unsigned char uaFrame[5] = {FLAG, ADDRESS_RECEIVER, CONTROL_UA, ADDRESS_RECEIVER ^ CONTROL_UA, FLAG};
                 write(fd, uaFrame, 5);
                 printf("Sent UA frame\n");
+                sleep(1);
                 STOP = TRUE; 
             }
             else {
