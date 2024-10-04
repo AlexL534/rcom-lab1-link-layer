@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <termios.h>
 #include <unistd.h>
+#include <signal.h>
 
 // Baudrate settings are defined in <asm/termbits.h>, which is
 // included by <termios.h>
@@ -28,8 +29,20 @@
 #define CONTROL_UA 0X07
 
 #define BUF_SIZE 256
+#define MAX_RETRANSMISSIONS 3 
+
+int alarmEnabled = FALSE;
+int alarmCount = 0;
 
 volatile int STOP = FALSE;
+
+void alarmHandler(int signal)
+{
+    alarmEnabled = FALSE;
+    alarmCount++;
+
+    printf("Alarm #%d\n", alarmCount);
+}
 
 int main(int argc, char *argv[])
 {
@@ -75,7 +88,7 @@ int main(int argc, char *argv[])
 
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
+    newtio.c_cc[VTIME] = 30; // Inter-character timer unused
     newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
@@ -96,7 +109,6 @@ int main(int argc, char *argv[])
     }
 
     printf("New termios structure set\n");
-
     // Create string to send
     unsigned char buf[BUF_SIZE] = {0};
 
@@ -110,28 +122,32 @@ int main(int argc, char *argv[])
     // Test this condition by placing a '\n' in the middle of the buffer.
     // The whole buffer must be sent even with the '\n'.
     buf[5] = '\n';
+    (void)signal(SIGALRM, alarmHandler);
 
-    int bytes = write(fd, buf, BUF_SIZE);
-    printf("%d bytes written\n", bytes);
+    while (alarmCount < 4) {
+        alarm(3);
+        alarmEnabled = TRUE;
 
-    // Wait until all bytes have been written to the serial port
-    sleep(1);
+        int bytes = write(fd, buf, BUF_SIZE);
+        printf("%d bytes written\n", bytes);
 
-    unsigned char response[BUF_SIZE] = {0};
-    int response_bytes = read(fd, response, BUF_SIZE);
-
-    if (response_bytes > 0) {
-        if (response[0] == FLAG && response[1] == ADDRESS_ANSWER_RECEIVER && response[2] == CONTROL_UA && response[3] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA) && response[4] == FLAG) {
-            printf("Received UA frame successfully.\n");
+        unsigned char response[BUF_SIZE] = {0};
+        int response_bytes = read(fd, response, BUF_SIZE);
+        if (response_bytes > 0) {
+            if (response[0] == FLAG && response[1] == ADDRESS_ANSWER_RECEIVER && response[2] == CONTROL_UA && response[3] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA) && response[4] == FLAG) {
+                printf("Received UA frame successfully.\n");
+                alarm(0);
+                printf("Alarm disabled.\n");
+                break;
+            }
+            else {
+                printf("Received an unexpected frame.\n");
+            }
         }
         else {
-            printf("Received an unexpected frame.\n");
+            printf("No frame received.\n");
         }
     }
-    else {
-        printf("No frame received.\n");
-    }
-
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
     {
