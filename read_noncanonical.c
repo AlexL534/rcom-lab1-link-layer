@@ -22,8 +22,10 @@
 #define BUF_SIZE 256
 
 #define FLAG 0x7E
-#define ADDRESS_SENDER 0x03
-#define ADDRESS_RECEIVER 0X01
+#define ADDRESS__SENT_SENDER 0x03
+#define ADDRESS__ANSWER_RECEIVER 0x03
+#define ADDRESS_SENT_RECEIVER 0X01
+#define ADDRESS_ANSWER_SENDER 0X01
 #define CONTROL_SET 0X03
 #define CONTROL_UA 0X07
 
@@ -104,10 +106,10 @@ int main(int argc, char *argv[])
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
 
         printf(":%s:%d\n", buf, bytes);
-        if (buf[0] == FLAG && buf[1] == ADDRESS_SENDER && buf[2] == CONTROL_SET && buf[4] == FLAG) {
+        if (buf[0] == FLAG && buf[1] == ADDRESS_SENT_SENDER && buf[2] == CONTROL_SET && buf[4] == FLAG) {
             unsigned char bcc = buf[1] ^ buf[2];
             if (buf[3] == bcc) {
-                unsigned char uaFrame[5] = {FLAG, ADDRESS_RECEIVER, CONTROL_UA, ADDRESS_RECEIVER ^ CONTROL_UA, FLAG};
+                unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
                 write(fd, uaFrame, 5);
                 printf("Sent UA frame\n");
                 sleep(1);
