@@ -20,8 +20,10 @@
 #define TRUE 1
 
 #define FLAG 0x7E
-#define ADDRESS_SENDER 0x03
-#define ADDRESS_RECEIVER 0X01
+#define ADDRESS__SENT_SENDER 0x03
+#define ADDRESS__ANSWER_RECEIVER 0x03
+#define ADDRESS_SENT_RECEIVER 0X01
+#define ADDRESS_ANSWER_SENDER 0X01
 #define CONTROL_SET 0X03
 #define CONTROL_UA 0X07
 
@@ -99,9 +101,9 @@ int main(int argc, char *argv[])
     unsigned char buf[BUF_SIZE] = {0};
 
     buf[0] = FLAG;
-    buf[1] = ADDRESS_SENDER;
+    buf[1] = ADDRESS_SENT_SENDER;
     buf[2] = CONTROL_SET;
-    buf[3] = ADDRESS_SENDER ^ CONTROL_SET;
+    buf[3] = ADDRESS_SENT_SENDER ^ CONTROL_SET;
     buf[4] = FLAG;
 
     // In non-canonical mode, '\n' does not end the writing.
@@ -119,7 +121,7 @@ int main(int argc, char *argv[])
     int response_bytes = read(fd, response, BUF_SIZE);
 
     if (response_bytes > 0) {
-        if (response[0] == FLAG && response[1] == ADDRESS_RECEIVER && response[2] == CONTROL_UA && response[3] == (ADDRESS_RECEIVER ^ CONTROL_UA) && response[4] == FLAG) {
+        if (response[0] == FLAG && response[1] == ADDRESS_ANSWER_RECEIVER && response[2] == CONTROL_UA && response[3] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA) && response[4] == FLAG) {
             printf("Received UA frame successfully.\n");
         }
         else {
