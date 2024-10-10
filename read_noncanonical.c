@@ -33,6 +33,15 @@
 
 volatile int STOP = FALSE;
 
+typedef enum {
+    START,
+    FLAG_RCV,
+    A_RCV,
+    C_RCV,
+    BCC_OK,
+    STOP_RCV,
+} ReceiverState;
+
 int main(int argc, char *argv[])
 {
     // Program usage: Uses either COM1 or COM2
@@ -100,26 +109,99 @@ int main(int argc, char *argv[])
 
     // Loop for input
     unsigned char buf[BUF_SIZE + 1] = {0}; // +1: Save space for the final '\0' char
-
+    ReceiverState state = START;
     while (STOP == FALSE)
     {
         // Returns after 5 chars have been input
         int bytes = read(fd, buf, BUF_SIZE);
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
 
-        printf(":%s:%d\n", buf, bytes);
-        if (buf[0] == FLAG && buf[1] == ADDRESS_SENT_SENDER && buf[2] == CONTROL_SET && buf[4] == FLAG) {
-            unsigned char bcc = buf[1] ^ buf[2];
-            if (buf[3] == bcc) {
-                unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
-                write(fd, uaFrame, 5);
-                printf("Sent UA frame\n");
-                sleep(1);
-                STOP = TRUE; 
-            }
-            else {
-                printf("BCC mismatch");
-                STOP = TRUE;
+        //printf(":%s:%d\n", buf, bytes); //prints frame received
+        if (bytes > 0) {
+                
+            for (int i = 0; i < bytes; i++) {
+                    
+                switch(state) {
+                    case START:
+                        if (buf[i] == FLAG) {
+                            state = FLAG_RCV;
+                        }
+                        else {
+                            state = START;
+                          
+                        }
+                          
+                        break;
+                    case FLAG_RCV:
+                        
+                        if (buf[i] == ADDRESS_SENT_SENDER) {
+                          
+                            state = A_RCV;
+                        }
+                        else if (buf[i] == FLAG) {
+                           
+                            state = FLAG_RCV;
+                        }
+                        else {
+                         
+                            state = START;
+                        }
+                        break;
+                    case A_RCV:
+                        if (buf[i] == CONTROL_SET) {
+                          
+                            state = C_RCV;
+                        }
+                        else if (buf[i] == FLAG) {
+                          
+                            state = FLAG_RCV;
+                        }
+                        else {
+                        
+                            state = START;
+                        }
+                        break;
+                    case C_RCV:
+                        
+                        if (buf[i] == (ADDRESS_SENT_SENDER ^ CONTROL_SET)) {
+                           
+                            state = BCC_OK;
+                        }
+                        else if (buf[i] == CONTROL_SET) {
+                            
+                            state = FLAG_RCV;
+                        }
+                        else {
+                              
+                            state = START;
+                        }
+                        break;
+                    case BCC_OK:
+                        if (buf[i] == FLAG) {
+                             
+                            state = STOP_RCV;
+                        }
+                        else { 
+
+                            state = START;
+                        }
+                        break;
+                    case STOP_RCV:
+
+                        unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
+
+                        write(fd, uaFrame, 5);
+
+                        printf("Sent UA frame\n");
+                        sleep(1);
+
+                        STOP = TRUE;
+
+                        break;
+                    default:
+                        state = START;
+                        break;
+                }
             }
         }
     }
