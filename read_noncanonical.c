@@ -118,22 +118,20 @@ int main(int argc, char *argv[])
 
         //printf(":%s:%d\n", buf, bytes); //prints frame received
         if (bytes > 0) {
-                
             for (int i = 0; i < bytes; i++) {
-                    
+                if (STOP == TRUE) break; 
                 switch(state) {
                     case START:
+                    printf("start\n");
                         if (buf[i] == FLAG) {
                             state = FLAG_RCV;
                         }
                         else {
                             state = START;
-                          
                         }
-                          
                         break;
                     case FLAG_RCV:
-                        
+                        printf("flag\n");
                         if (buf[i] == ADDRESS_SENT_SENDER) {
                           
                             state = A_RCV;
@@ -143,13 +141,12 @@ int main(int argc, char *argv[])
                             state = FLAG_RCV;
                         }
                         else {
-                         
                             state = START;
                         }
                         break;
                     case A_RCV:
+                        printf("A\n");
                         if (buf[i] == CONTROL_SET) {
-                          
                             state = C_RCV;
                         }
                         else if (buf[i] == FLAG) {
@@ -157,14 +154,12 @@ int main(int argc, char *argv[])
                             state = FLAG_RCV;
                         }
                         else {
-                        
                             state = START;
                         }
                         break;
                     case C_RCV:
-                        
+                        printf("C\n");
                         if (buf[i] == (ADDRESS_SENT_SENDER ^ CONTROL_SET)) {
-                           
                             state = BCC_OK;
                         }
                         else if (buf[i] == CONTROL_SET) {
@@ -177,6 +172,7 @@ int main(int argc, char *argv[])
                         }
                         break;
                     case BCC_OK:
+                        printf("BCC\n");
                         if (buf[i] == FLAG) {
                              
                             state = STOP_RCV;
@@ -187,16 +183,12 @@ int main(int argc, char *argv[])
                         }
                         break;
                     case STOP_RCV:
-
+                        printf("STOP\n");
                         unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
-
                         write(fd, uaFrame, 5);
-
                         printf("Sent UA frame\n");
                         sleep(1);
-
                         STOP = TRUE;
-
                         break;
                     default:
                         state = START;
