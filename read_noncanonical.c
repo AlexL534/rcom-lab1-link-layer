@@ -22,8 +22,8 @@
 #define BUF_SIZE 256
 
 #define FLAG 0x7E
-#define ADDRESS__SENT_SENDER 0x03
-#define ADDRESS__ANSWER_RECEIVER 0x03
+#define ADDRESS_SENT_SENDER 0x03
+#define ADDRESS_ANSWER_RECEIVER 0x03
 #define ADDRESS_SENT_RECEIVER 0X01
 #define ADDRESS_ANSWER_SENDER 0X01
 #define CONTROL_SET 0X03
@@ -74,8 +74,8 @@ int main(int argc, char *argv[])
 
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
-    newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VTIME] = 30; // Inter-character timer unused
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -103,14 +103,17 @@ int main(int argc, char *argv[])
     {
         // Returns after 5 chars have been input
         int bytes = read(fd, buf, BUF_SIZE);
+
         buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
+        printf(":%s:%d\n", buf, bytes);
+
 
         printf(":%s:%d\n", buf, bytes);
         if (buf[0] == FLAG && buf[1] == ADDRESS_SENT_SENDER && buf[2] == CONTROL_SET && buf[4] == FLAG) {
             unsigned char bcc = buf[1] ^ buf[2];
             if (buf[3] == bcc) {
                 unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
-                write(fd, uaFrame, 5);
+                //write(fd, uaFrame, 5);
                 printf("Sent UA frame\n");
                 sleep(1);
                 STOP = TRUE; 

@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 30; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -124,11 +124,11 @@ int main(int argc, char *argv[])
     buf[5] = '\n';
     (void)signal(SIGALRM, alarmHandler);
 
-    while (alarmCount < 4) {
+    while (alarmCount < 3) {
         alarm(3);
         alarmEnabled = TRUE;
 
-        int bytes = write(fd, buf, BUF_SIZE);
+        int bytes = write(fd, buf, 5);
         printf("%d bytes written\n", bytes);
 
         unsigned char response[BUF_SIZE] = {0};
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
             }
         }
         else {
-            printf("No frame received.\n");
+            printf("No frame received, retransmissing\n");
         }
     }
     // Restore the old port settings
