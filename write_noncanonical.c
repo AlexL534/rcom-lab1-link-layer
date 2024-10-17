@@ -33,7 +33,17 @@
 
 volatile int STOP = FALSE;
 
+typedef enum {
+    START,
+    FLAG_SDR,
+    A_SDR,
+    C_SDR,
+    BCC_OK,
+    STOP_SDR,
+} SenderState;
+
 int alarmEnabled = FALSE;
+int responseReceived = FALSE;
 int alarmCount = 0;
 
 // Alarm function handler
@@ -126,53 +136,107 @@ int main(int argc, char *argv[])
     // The whole buffer must be sent even with the '\n'.
     buf[5] = '\n';
 
-    int bytes = write(fd, buf, BUF_SIZE);
-    printf("%d bytes written\n", bytes);
-
-    // Wait until all bytes have been written to the serial port
-    sleep(1);
+    (void)signal(SIGALRM, alarmHandler);
 
     unsigned char response[BUF_SIZE] = {0};
-    int response_bytes = read(fd, response, BUF_SIZE);
+    int response_bytes = 0;
+    SenderState state = START;
 
-    if (response_bytes > 0) {
-        if (response[0] == FLAG && response[1] == ADDRESS_ANSWER_RECEIVER && response[2] == CONTROL_UA && response[3] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA) && response[4] == FLAG) {
-            printf("Received UA frame successfully.\n");
+    while (alarmCount < 4 && !responseReceived) {
+        if (alarmEnabled == FALSE)
+        {
+            int bytes = write(fd, buf, BUF_SIZE);
+            sleep(1);
+            printf("%d bytes written\n", bytes);
+            alarm(3); // Set alarm to be triggered in 3s
+            
+            alarmEnabled = TRUE;
+        }
+
+        response_bytes = read(fd, response, BUF_SIZE);
+
+        if (response_bytes > 0) {
+            for (int i = 0; i < response_bytes; i++) {
+                switch(state) {
+                    case START:
+                        printf("start\n");
+                        if (response[i] == FLAG) {
+                            state = FLAG_SDR;
+                        }
+                        else {
+                            state = START;
+                        }
+                        break;
+                    case FLAG_SDR:
+                        printf("flag\n");
+                        if (response[i] == ADDRESS_ANSWER_RECEIVER) {
+                          
+                            state = A_SDR;
+                        }
+                        else if (response[i] == FLAG) {
+                           
+                            state = FLAG_SDR;
+                        }
+                        else {
+                            state = START;
+                        }
+                        break;
+                    case A_SDR:
+                        printf("A\n");
+                        if (response[i] == CONTROL_UA) {
+                            state = C_SDR;
+                        }
+                        else if (response[i] == FLAG) {
+                          
+                            state = FLAG_SDR;
+                        }
+                        else {
+                            state = START;
+                        }
+                        break;
+                    case C_SDR:
+                        printf("C\n");
+                        if (response[i] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA)) {
+                            state = BCC_OK;
+                        }
+                        else if (response[i] == CONTROL_UA) {
+                            
+                            state = FLAG_SDR;
+                        }
+                        else {
+                              
+                            state = START;
+                        }
+                        break;
+                    case BCC_OK:
+                        printf("BCC\n");
+                        if (response[i] == FLAG) {
+                             
+                            state = STOP_SDR;
+                        }
+                        else {
+
+                            state = START;
+                        }
+                        break;
+                    case STOP_SDR:
+                        printf("STOP\n");
+                        printf("Received UA frame successfully.\n");
+                        responseReceived = TRUE;
+                        alarm(0);
+                        break;
+                    default:
+                        state = START;
+                        break;
+                }
+            }
         }
         else {
-            printf("Received an unexpected frame.\n");
+            //printf("No frame received.\n");
         }
     }
-    else {
-        printf("No frame received.\n");
-        (void)signal(SIGALRM, alarmHandler);
 
-        while (alarmCount < 4)
-        {
-            response_bytes = read(fd, response, BUF_SIZE);
-            if (response_bytes > 0) {
-                if (response[0] == FLAG && response[1] == ADDRESS_ANSWER_RECEIVER && response[2] == CONTROL_UA && response[3] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA) && response[4] == FLAG) {
-                    printf("Received UA frame successfully.\n");
-                    alarm(0);
-                    break;
-                }
-                else {
-                    printf("Received an unexpected frame.\n");
-                }
-            }
-            if (alarmEnabled == FALSE)
-            {
-                int bytes = write(fd, buf, BUF_SIZE);
-                printf("%d bytes written\n", bytes);
-                sleep(1);
-                alarm(3); // Set alarm to be triggered in 3s
-                
-                alarmEnabled = TRUE;
-            }
-        }
-
-        printf("Ending program\n");
-    }
+    printf("Ending program\n");
 
     // Restore the old port settings
     if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
