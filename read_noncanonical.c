@@ -184,8 +184,8 @@ int main(int argc, char *argv[])
                         break;
                     case STOP_RCV:
                         printf("STOP\n");
-                        unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
-                        write(fd, uaFrame, 5);
+                        unsigned char uaFrame[6] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
+                        write(fd, uaFrame, 6);
                         printf("Sent UA frame\n");
                         sleep(1);
                         STOP = TRUE;
