@@ -31,6 +31,8 @@
 #define CONTROL_SET 0X03
 #define CONTROL_UA 0X07
 
+#define ALARM_MAX_RETRIES 4
+
 volatile int STOP = FALSE;
 
 typedef enum {
@@ -86,7 +88,7 @@ int main(int argc, char *argv[])
     // Set input mode (non-canonical, no echo,...)
     newtio.c_lflag = 0;
     newtio.c_cc[VTIME] = 0; // Inter-character timer unused
-    newtio.c_cc[VMIN] = 5;  // Blocking read until 5 chars received
+    newtio.c_cc[VMIN] = 0;  // Blocking read until 5 chars received
 
     // VTIME e VMIN should be changed in order to protect with a
     // timeout the reception of the following character(s)
@@ -137,7 +139,7 @@ int main(int argc, char *argv[])
                             state = A_RCV;
                         }
                         else if (buf[i] == FLAG) {
-                           
+                        
                             state = FLAG_RCV;
                         }
                         else {
@@ -184,10 +186,9 @@ int main(int argc, char *argv[])
                         break;
                     case STOP_RCV:
                         printf("STOP\n");
-                        unsigned char uaFrame[6] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
+                        unsigned char uaFrame[6] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG, '\0'};
                         write(fd, uaFrame, 6);
                         printf("Sent UA frame\n");
-                        sleep(1);
                         STOP = TRUE;
                         break;
                     default:

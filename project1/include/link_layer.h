@@ -4,6 +4,35 @@
 #ifndef _LINK_LAYER_H_
 #define _LINK_LAYER_H_
 
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <termios.h>
+#include <unistd.h>
+#include <signal.h>
+
+#define BAUDRATE B38400
+//MISC
+#define _POSIX_SOURCE 1 // POSIX compliant source
+
+#define FALSE 0
+#define TRUE 1
+
+#define BUF_SIZE 256
+
+#define FLAG 0x7E
+#define ADDRESS_SENT_SENDER 0x03
+#define ADDRESS_ANSWER_RECEIVER 0x03
+#define ADDRESS_SENT_RECEIVER 0X01
+#define ADDRESS_ANSWER_SENDER 0X01
+#define CONTROL_SET 0X03
+#define CONTROL_UA 0X07
+
+#define ALARM_MAX_RETRIES 4
+
 typedef enum
 {
     LlTx,

@@ -29,6 +29,8 @@
 #define CONTROL_SET 0X03
 #define CONTROL_UA 0X07
 
+#define ALARM_MAX_RETRIES 4
+
 #define BUF_SIZE 256
 
 volatile int STOP = FALSE;
@@ -122,31 +124,20 @@ int main(int argc, char *argv[])
 
     printf("New termios structure set\n");
 
-    // Create string to send
-    unsigned char buf[BUF_SIZE] = {0};
-
-    buf[0] = FLAG;
-    buf[1] = ADDRESS_SENT_SENDER;
-    buf[2] = CONTROL_SET;
-    buf[3] = ADDRESS_SENT_SENDER ^ CONTROL_SET;
-    buf[4] = FLAG;
-
-    // In non-canonical mode, '\n' does not end the writing.
-    // Test this condition by placing a '\n' in the middle of the buffer.
-    // The whole buffer must be sent even with the '\n'.
-    buf[5] = '\n';
-
     (void)signal(SIGALRM, alarmHandler);
+
+    // Create string to send
+    unsigned char buf[6] = {FLAG, ADDRESS_SENT_SENDER, CONTROL_SET, ADDRESS_SENT_SENDER ^ CONTROL_SET, FLAG, '\0'};
 
     unsigned char response[BUF_SIZE] = {0};
     int response_bytes = 0;
     SenderState state = START;
 
-    while (alarmCount < 4 && !responseReceived) {
+    while (alarmCount < ALARM_MAX_RETRIES && !responseReceived) {
         if (alarmEnabled == FALSE)
         {
-            int bytes = write(fd, buf, BUF_SIZE);
-            sleep(1);
+            int bytes = write(fd, buf, 6);
+            sleep(1); //this sleep is important
             printf("%d bytes written\n", bytes);
             alarm(3); // Set alarm to be triggered in 3s
             
