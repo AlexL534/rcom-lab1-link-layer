@@ -22,16 +22,12 @@
 #define TRUE 1
 
 #define FLAG 0x7E
-#define ADDRESS_SENT_TRANSMITTER 0x03
+#define ADDRESS_SENT_SENDER 0x03
 #define ADDRESS_ANSWER_RECEIVER 0x03
 #define ADDRESS_SENT_RECEIVER 0X01
-#define ADDRESS_ANSWER_TRANSMITTER 0X01
+#define ADDRESS_ANSWER_SENDER 0X01
 #define CONTROL_SET 0X03
 #define CONTROL_UA 0X07
-#define C_N(Ns) ((Ns) << 6)
-
-
-#define ALARM_MAX_RETRIES 4
 
 #define BUF_SIZE 256
 
@@ -50,8 +46,6 @@ int alarmEnabled = FALSE;
 int responseReceived = FALSE;
 int alarmCount = 0;
 
-unsigned char frameNumberT = 0;
-
 // Alarm function handler
 void alarmHandler(int signal)
 {
@@ -59,20 +53,6 @@ void alarmHandler(int signal)
     alarmCount++;
 
     printf("Alarm #%d\n", alarmCount);
-}
-
-//this function probably needs to be changed
-void byteStuff(unsigned char *input, int inputSize, unsigned char *output, int *outputSize) {
-    int j = 0;
-    for (int i = 0; i < inputSize; i++) {
-        if (input[i] == FLAG || input[i] == ESC) {
-            output[j++] = ESC; // Stuff the ESC byte
-            output[j++] = input[i] ^ 0x20; // XOR with 0x20 (or any value) for differentiation
-        } else {
-            output[j++] = input[i];
-        }
-    }
-    *outputSize = j; // Set the size of the output
 }
 
 
@@ -142,20 +122,31 @@ int main(int argc, char *argv[])
 
     printf("New termios structure set\n");
 
-    (void)signal(SIGALRM, alarmHandler);
-
     // Create string to send
-    unsigned char buf[6] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG, '\0'};
+    unsigned char buf[BUF_SIZE] = {0};
+
+    buf[0] = FLAG;
+    buf[1] = ADDRESS_SENT_SENDER;
+    buf[2] = CONTROL_SET;
+    buf[3] = ADDRESS_SENT_SENDER ^ CONTROL_SET;
+    buf[4] = FLAG;
+
+    // In non-canonical mode, '\n' does not end the writing.
+    // Test this condition by placing a '\n' in the middle of the buffer.
+    // The whole buffer must be sent even with the '\n'.
+    buf[5] = '\n';
+
+    (void)signal(SIGALRM, alarmHandler);
 
     unsigned char response[BUF_SIZE] = {0};
     int response_bytes = 0;
     SenderState state = START;
 
-    while (alarmCount < ALARM_MAX_RETRIES && !responseReceived) {
+    while (alarmCount < 4 && !responseReceived) {
         if (alarmEnabled == FALSE)
         {
-            int bytes = write(fd, buf, 6);
-            sleep(1); //this sleep is important
+            int bytes = write(fd, buf, BUF_SIZE);
+            sleep(1);
             printf("%d bytes written\n", bytes);
             alarm(3); // Set alarm to be triggered in 3s
             
@@ -165,7 +156,7 @@ int main(int argc, char *argv[])
         response_bytes = read(fd, response, BUF_SIZE);
 
         if (response_bytes > 0) {
-            for (int i = 0; i < response_bytes; i++) {
+            for (int i = 0; i <= response_bytes; i++) {
                 switch(state) {
                     case START:
                         printf("start\n");
@@ -241,21 +232,9 @@ int main(int argc, char *argv[])
             }
         }
         else {
-            printf("No frame received.\n");
+            //printf("No frame received.\n");
         }
     }
-    //Start of Stop and Wait !!!!!!!!
-    int bufsize = 256; //random value, bufsize is needed because it is one of the arguments of llwrite
-    int inf_frame_size = 6 + bufsize;
-    unsigned char *frame = (unsigned char *) malloc(inf_frame_size);
-    unsigned char frame[frameSize] = {FLAG, ADDRESS_SENT_TRANSMITTER, C_N(tramaTx), A_ER ^ C_N(tramaTx)};
-    memcpy(frame+4,buf, bufsize);
-    unsigned char BCC2 = 0;
-    for (unsigned int i = 0; i < bufSize; i++) {
-        BCC2 ^= buf[i]; // doing XOR of each byte with BCC2
-    }
-
-
 
     printf("Ending program\n");
 
