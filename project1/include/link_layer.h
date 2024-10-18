@@ -24,14 +24,34 @@
 #define BUF_SIZE 256
 
 #define FLAG 0x7E
-#define ADDRESS_SENT_SENDER 0x03
+#define ADDRESS_SENT_TRANSMITTER 0x03
 #define ADDRESS_ANSWER_RECEIVER 0x03
 #define ADDRESS_SENT_RECEIVER 0X01
-#define ADDRESS_ANSWER_SENDER 0X01
+#define ADDRESS_ANSWER_TRANSMITTER 0X01
 #define CONTROL_SET 0X03
 #define CONTROL_UA 0X07
+#define C_N(Ns) ((Ns) << 6)
+
 
 #define ALARM_MAX_RETRIES 4
+
+typedef enum {
+    START_R,
+    FLAG_RCV,
+    A_RCV,
+    C_RCV,
+    BCC_OK_R,
+    STOP_RCV,
+} ReceiverState;
+
+typedef enum {
+    START_S,
+    FLAG_SDR,
+    A_SDR,
+    C_SDR,
+    BCC_OK_S,
+    STOP_SDR,
+} SenderState;
 
 typedef enum
 {
@@ -47,6 +67,8 @@ typedef struct
     int nRetransmissions;
     int timeout;
 } LinkLayer;
+
+
 
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer

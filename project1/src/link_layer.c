@@ -4,23 +4,8 @@
 
 volatile int STOP = FALSE;
 
-typedef enum {
-    START_R,
-    FLAG_RCV,
-    A_RCV,
-    C_RCV,
-    BCC_OK_R,
-    STOP_RCV,
-} ReceiverState;
-
-typedef enum {
-    START_S,
-    FLAG_SDR,
-    A_SDR,
-    C_SDR,
-    BCC_OK_S,
-    STOP_SDR,
-} SenderState;
+unsigned char frameNumberT = 0;
+unsigned char frameNumberR = 1;
 
 int alarmEnabled = FALSE;
 int responseReceived = FALSE;
@@ -51,7 +36,7 @@ int llopen(LinkLayer connectionParameters)
             (void)signal(SIGALRM, alarmHandler);
 
             // Create string to send
-            unsigned char bufS[6] = {FLAG, ADDRESS_SENT_SENDER, CONTROL_SET, ADDRESS_SENT_SENDER ^ CONTROL_SET, FLAG, '\0'};
+            unsigned char bufS[6] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG, '\0'};
 
             unsigned char response[BUF_SIZE] = {0};
             int response_bytes = 0;
@@ -183,7 +168,7 @@ int llopen(LinkLayer connectionParameters)
                                 break;
                             case FLAG_RCV:
                                 printf("flag\n");
-                                if (buf[i] == ADDRESS_SENT_SENDER) {
+                                if (buf[i] == ADDRESS_SENT_TRANSMITTER) {
                                 
                                     ReceiverState = A_RCV;
                                 }
@@ -210,7 +195,7 @@ int llopen(LinkLayer connectionParameters)
                                 break;
                             case C_RCV:
                                 printf("C\n");
-                                if (buf[i] == (ADDRESS_SENT_SENDER ^ CONTROL_SET)) {
+                                if (buf[i] == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
                                     ReceiverState = BCC_OK_R;
                                 }
                                 else if (buf[i] == CONTROL_SET) {

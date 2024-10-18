@@ -24,12 +24,14 @@
     #define BUF_SIZE 256
 
     #define FLAG 0x7E
-    #define ADDRESS_SENT_SENDER 0x03
+    #define ADDRESS_SENT_TRANSMITTER 0x03
     #define ADDRESS_ANSWER_RECEIVER 0x03
     #define ADDRESS_SENT_RECEIVER 0X01
-    #define ADDRESS_ANSWER_SENDER 0X01
+    #define ADDRESS_ANSWER_TRANSMITTER 0X01
     #define CONTROL_SET 0X03
     #define CONTROL_UA 0X07
+    #define C_N(Ns) ((Ns) << 6)
+
 
     #define ALARM_MAX_RETRIES 4
 
@@ -43,6 +45,22 @@
         BCC_OK,
         STOP_RCV,
     } ReceiverState;
+
+    unsigned char frameNumberR = 1;
+
+    //this function probably needs to be changed
+    void byteDestuff(unsigned char *input, int inputSize, unsigned char *output, int *outputSize) {
+    int j = 0;
+    for (int i = 0; i < inputSize; i++) {
+        if (input[i] == ESC) {
+            i++; // Move to the next byte
+            output[j++] = input[i] ^ 0x20; // Undo the XOR to get the original byte
+        } else {
+            output[j++] = input[i];
+        }
+    }
+    *outputSize = j; // Set the size of the output
+}
 
     int main(int argc, char *argv[])
     {
@@ -134,7 +152,7 @@
                             break;
                         case FLAG_RCV:
                             printf("flag\n");
-                            if (buf[i] == ADDRESS_SENT_SENDER) {
+                            if (buf[i] == ADDRESS_SENT_TRANSMITTER) {
                             
                                 state = A_RCV;
                             }
@@ -161,7 +179,7 @@
                             break;
                         case C_RCV:
                             printf("C\n");
-                            if (buf[i] == (ADDRESS_SENT_SENDER ^ CONTROL_SET)) {
+                            if (buf[i] == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
                                 state = BCC_OK;
                             }
                             else if (buf[i] == CONTROL_SET) {
@@ -200,7 +218,7 @@
         }
 
         //Start of Stop and Wait !!!!!!!!
-        
+
 
         // The while() cycle should be changed in order to respect the specifications
         // of the protocol indicated in the Lab guide
