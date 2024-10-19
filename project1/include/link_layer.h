@@ -102,4 +102,6 @@ int llread(int fd, unsigned char *packet);
 // Return "1" on success or "-1" on error.
 int llclose(int fd, int showStatistics);
 
+unsigned char checkControl(int fd);
+
 #endif // _LINK_LAYER_H_

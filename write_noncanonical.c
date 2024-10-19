@@ -53,6 +53,8 @@ typedef enum {
 int alarmEnabled = FALSE;
 int responseReceived = FALSE;
 int alarmCount = 0;
+int timeout = 3;
+int retransmisions = 4;
 
 unsigned char frameNumberT = 0;
 
@@ -63,6 +65,52 @@ void alarmHandler(int signal)
     alarmCount++;
 
     printf("Alarm #%d\n", alarmCount);
+}
+
+unsigned char checkControl(int fd) {
+    unsigned char byte;
+    unsigned char c = 0;
+    SenderState state = START;
+
+    while (state != STOP_SDR && alarmEnabled == FALSE) {
+        if (read(fd,&byte, 1) > 0) {
+            switch (state) {
+                case START:
+                    if (byte == FLAG) state = FLAG_SDR;
+                    break;
+
+                case FLAG_SDR:
+                    if (byte == ADDRESS_SENT_RECEIVER) state = A_SDR;
+                    else if (byte == FLAG) state = FLAG_SDR;
+                    else state = START;
+                    break;
+                
+                case A_SDR:
+                    if (byte == RR0 || byte == RR1 || byte == REJ0 || byte == REJ1 || byte == DISC) {
+                        state = C_SDR;
+                        c = byte;
+                    }
+                    else if (byte == FLAG) state = FLAG_SDR;
+                    else state = START;
+                    break;
+
+                case C_SDR:
+                    if (byte == (ADDRESS_SENT_RECEIVER ^ c)) state = BCC_OK;
+                    else if (byte == FLAG) state = FLAG_SDR;
+                    else state = START;
+                    break;
+
+                case BCC_OK:
+                    if (byte == FLAG) state = STOP_SDR;
+                    else state = START;
+                    break;
+
+                default:
+                    break;
+            }
+        }
+    }
+    return c;
 }
 
 
@@ -142,10 +190,10 @@ int main(int argc, char *argv[]) {
     while (alarmCount < ALARM_MAX_RETRIES && !responseReceived) {
         if (alarmEnabled == FALSE)
         {
-            int bytes = write(fd, buf, 6);
+            int bytes = write(fd, buf, 5);
             sleep(1); //this sleep is important
             printf("%d bytes written\n", bytes);
-            alarm(3); // Set alarm to be triggered in 3s
+            alarm(timeout); // Set alarm to be triggered in 3s
             
             alarmEnabled = TRUE;
         }
@@ -249,23 +297,49 @@ int main(int argc, char *argv[]) {
     for (unsigned int i = 0; i < bufsize; i++) {
         BCC2 ^= buf2[i]; // doing XOR of each byte with BCC2
     }
-    
-    if (responseReceived) {
-        int j = 4;
-        for (int i = 0; i < bufsize; i++) {
-            if (buf2[i] == FLAG || buf2[i] == ESC) {
-                frame = realloc(frame, inf_frame_size++);
-                frame[j++] = ESC; // Stuff with ESC byte
-            }
-            frame[j++] = buf2[i];
+
+    int j = 4;
+    for (int i = 0; i < bufsize; i++) {
+        if (buf2[i] == FLAG || buf2[i] == ESC) {
+            frame = realloc(frame, inf_frame_size++);
+            frame[j++] = ESC; // Stuff with ESC byte
         }
-        frame[j++] = BCC2;
-        frame[j++] = FLAG;
+        frame[j++] = buf2[i];
     }
+    frame[j++] = BCC2;
+    frame[j++] = FLAG;
 
     int current_transmission = 0;
     int rejected = 0;
     int accepted = 0;
+
+    while (current_transmission < retransmisions) {
+        alarmEnabled = FALSE;
+        alarm(timeout);
+        rejected = 0;
+        accepted = 0;
+
+        while (!alarmEnabled && !rejected && !accepted) {
+            write(fd, frame, j);
+            unsigned char command = checkControl(fd);
+
+            if (command == REJ0 || command == REJ1) {
+                rejected = 1;
+            }
+
+            else if (command == RR0 || command == RR1) {
+                accepted = 1;
+                frameNumberT = (frameNumberT + 1) % 2;
+            }
+            
+        }
+
+        if (accepted) break;
+        current_transmission++;
+    }
+
+    free(frame);
+    if (accepted) return inf_frame_size;
 
     printf("Ending program\n");
 
