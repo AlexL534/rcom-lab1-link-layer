@@ -4,6 +4,8 @@
 #ifndef _LINK_LAYER_H_
 #define _LINK_LAYER_H_
 
+#include "serial_port.h"
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>

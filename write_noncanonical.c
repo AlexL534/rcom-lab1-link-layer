@@ -133,7 +133,7 @@ int main(int argc, char *argv[]) {
 
     (void)signal(SIGALRM, alarmHandler);
 
-    unsigned char buf[6] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG, '\0'};
+    unsigned char buf[5] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG};
 
     unsigned char response[BUF_SIZE] = {0};
     int response_bytes = 0;
@@ -262,6 +262,10 @@ int main(int argc, char *argv[]) {
         frame[j++] = BCC2;
         frame[j++] = FLAG;
     }
+
+    int current_transmission = 0;
+    int rejected = 0;
+    int accepted = 0;
 
     printf("Ending program\n");
 

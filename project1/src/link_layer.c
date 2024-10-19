@@ -37,7 +37,7 @@ int llopen(LinkLayer connectionParameters)
             (void)signal(SIGALRM, alarmHandler);
 
             // Create string to send
-            unsigned char bufS[6] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG, '\0'};
+            unsigned char bufS[5] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG};
 
             unsigned char response[BUF_SIZE] = {0};
             int response_bytes = 0;
@@ -47,7 +47,7 @@ int llopen(LinkLayer connectionParameters)
                 if (alarmEnabled == FALSE)
                 {
                     int bytes = write(fd, bufS, 6);
-                    sleep(1);
+                    sleep(1); 
                     printf("%d bytes written\n", bytes);
                     alarm(3); // Set alarm to be triggered in 3s
                     
@@ -57,7 +57,7 @@ int llopen(LinkLayer connectionParameters)
                 response_bytes = read(fd, response, BUF_SIZE);
 
                 if (response_bytes > 0) {
-                    for (int i = 0; i < response_bytes; i++) {
+                    for (int i = 0; i <= response_bytes; i++) {
                         switch(senderState) {
                             case START_S:
                                 printf("start\n");
@@ -248,26 +248,39 @@ return 1;
 int llwrite(int fd, const unsigned char *buf, int bufSize)
 {
     // TODO
+        unsigned char buf2[256];
+    int bufsize = 256; //random value, bufsize is needed because it is one of the arguments of llwrite
     int inf_frame_size = 6 + bufsize;
     unsigned char *frame = (unsigned char *) malloc(inf_frame_size);
-    unsigned char frame[inf_frame_size] = {FLAG, ADDRESS_SENT_TRANSMITTER, C_N(frameNumberT), A_ER ^ C_N(frameNumberT)};
-    memcpy(frame+4,buf, bufsize);
+
+    frame[0] = FLAG;
+    frame[1] = ADDRESS_SENT_TRANSMITTER;
+    frame[2] = C_N(frameNumberT);
+    frame[3] = ADDRESS_SENT_TRANSMITTER ^ C_N(frameNumberT);
+
+    memcpy(frame+4,buf2, bufsize);
     unsigned char BCC2 = 0;
-    for (unsigned int i = 0; i < bufSize; i++) {
-        BCC2 ^= buf[i]; // doing XOR of each byte with BCC2
+    for (unsigned int i = 0; i < bufsize; i++) {
+        BCC2 ^= buf2[i]; // doing XOR of each byte with BCC2
     }
-    int j = 4;
-    for (int i = 0; i < bufSize; i++) {
-        if (buf2[i] == FLAG || buf2[i] == ESC) {
-            frame = realloc(frame, inf_frame_size+);
-            frame[j++] = ESC; // Stuff with ESC byte
-        }
-        frame[j++] = buf2[i];
-    }
-    frame[j++] = BCC2;
-    frame[j++] = FLAG;
     
+    if (responseReceived) {
+        int j = 4;
+        for (int i = 0; i < bufsize; i++) {
+            if (buf2[i] == FLAG || buf2[i] == ESC) {
+                frame = realloc(frame, inf_frame_size++);
+                frame[j++] = ESC; // Stuff with ESC byte
+            }
+            frame[j++] = buf2[i];
+        }
+        frame[j++] = BCC2;
+        frame[j++] = FLAG;
+    }
+
     int current_transmission = 0;
+    int rejected = 0;
+    int accepted = 0;
+
     return 0;
 }
 
