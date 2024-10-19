@@ -10,6 +10,7 @@ unsigned char frameNumberR = 1;
 int alarmEnabled = FALSE;
 int responseReceived = FALSE;
 int alarmCount = 0;
+int retransmissions = 0;
 
 // Alarm function handler
 void alarmHandler(int signal)
@@ -31,7 +32,7 @@ int llopen(LinkLayer connectionParameters)
     // TODO
     switch (connectionParameters.role) {
         case LlTx: {
-            printf("New termios structure set\n");
+            printf("\nNew termios structure set\n");
 
             (void)signal(SIGALRM, alarmHandler);
 
@@ -247,7 +248,26 @@ return 1;
 int llwrite(int fd, const unsigned char *buf, int bufSize)
 {
     // TODO
-
+    int inf_frame_size = 6 + bufsize;
+    unsigned char *frame = (unsigned char *) malloc(inf_frame_size);
+    unsigned char frame[inf_frame_size] = {FLAG, ADDRESS_SENT_TRANSMITTER, C_N(frameNumberT), A_ER ^ C_N(frameNumberT)};
+    memcpy(frame+4,buf, bufsize);
+    unsigned char BCC2 = 0;
+    for (unsigned int i = 0; i < bufSize; i++) {
+        BCC2 ^= buf[i]; // doing XOR of each byte with BCC2
+    }
+    int j = 4;
+    for (int i = 0; i < bufSize; i++) {
+        if (buf2[i] == FLAG || buf2[i] == ESC) {
+            frame = realloc(frame, inf_frame_size+);
+            frame[j++] = ESC; // Stuff with ESC byte
+        }
+        frame[j++] = buf2[i];
+    }
+    frame[j++] = BCC2;
+    frame[j++] = FLAG;
+    
+    int current_transmission = 0;
     return 0;
 }
 

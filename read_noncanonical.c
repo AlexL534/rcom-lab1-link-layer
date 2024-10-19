@@ -31,7 +31,12 @@
     #define CONTROL_SET 0X03
     #define CONTROL_UA 0X07
     #define C_N(Ns) ((Ns) << 6)
-
+    #define ESC 0x7D
+    #define RR0 0xAA
+    #define RR1 0xAB
+    #define REJ0 0X54
+    #define REJ1 0X55
+    #define DISC 0X0B
 
     #define ALARM_MAX_RETRIES 4
 
