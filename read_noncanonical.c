@@ -49,6 +49,8 @@
         C_RCV,
         BCC_OK,
         STOP_RCV,
+        READ_DATA,
+        ESC_FOUND,
     } ReceiverState;
 
     unsigned char frameNumberR = 1;
@@ -223,7 +225,54 @@
         }
 
         //Start of Stop and Wait !!!!!!!!
+        unsigned char byte;
+        unsigned char c = 0;
+        int x = 0;
+        ReceiverState state = START;
 
+        while (state != STOP_RCV) {
+            if (read(fd,&byte, 1) > 0) {
+                case START:
+                    if (byte == FLAG) state = FLAG_RCV;
+                    break;
+
+                case FLAG_RCV:
+                    if (byte == ADDRESS_SENT_TRANSMITTER) state = A_RCV;
+                    else if (byte == FLAG) state = FLAG_RCV;
+                    else state = START;
+                    break;
+
+                case A_RCV:
+                    if (byte == C_N(0) || byte == C_N(1)) {
+                        state = C_RCV;
+                        c = byte;
+                    } 
+                    else if (byte == FLAG) state = FLAG_RCV;
+                    else if (byte == DISC) {
+                        
+                    }
+                    else state = START;
+                    break;
+                
+                case C_RCV:
+                    if (byte == (ADDRESS_SENT_TRANSMITTER ^ c)) state = READ_DATA;
+                    else if (byte == FLAG) state = FLAG_RCV;
+                    else state = START;
+                    break;
+
+                case READ_DATA:
+                    if (byte == ESC) state = ESC_FOUND;
+                    else if (byte == FLAG) {
+                        unsigned char bcc2 = 
+                    }
+
+                case ESC_FOUND:
+
+
+                default:
+                    break;
+            }
+        }
 
         // The while() cycle should be changed in order to respect the specifications
         // of the protocol indicated in the Lab guide
