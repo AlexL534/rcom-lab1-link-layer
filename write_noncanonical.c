@@ -357,7 +357,111 @@ int main(int argc, char *argv[]) {
     }
 
     free(stuffed_frame);
-    if (accepted) return inf_frame_size;
+    if (accepted) /*return inf_frame_size;*/ {
+        (void)signal(SIGALRM, alarmHandler);
+
+        unsigned char bufDisc[5] = {FLAG, ADDRESS_SENT_TRANSMITTER, DISC, ADDRESS_SENT_TRANSMITTER ^ DISC, FLAG};
+
+        unsigned char responseDisc[BUF_SIZE] = {0};
+        int response_bytes = 0;
+        alarmCount = 0;
+        SenderState state = START;
+        responseReceived = FALSE;
+
+        while (alarmCount < ALARM_MAX_RETRIES && !responseReceived) {
+            if (alarmEnabled == FALSE)
+            {
+                int bytes = write(fd, bufDisc, 5);
+                sleep(1); //this sleep is important
+                printf("%d bytes written\n", bytes);
+                alarm(timeout); // Set alarm to be triggered in 3s
+                
+                alarmEnabled = TRUE;
+            }
+
+            response_bytes = read(fd, response, BUF_SIZE);
+
+            if (response_bytes > 0) {
+                for (int i = 0; i <= response_bytes; i++) {
+                    switch(state) {
+                        case START:
+                            printf("start\n");
+                            if (response[i] == FLAG) {
+                                state = FLAG_SDR;
+                            }
+                            else {
+                                state = START;
+                            }
+                            break;
+                        case FLAG_SDR:
+                            printf("flag\n");
+                            if (response[i] == ADDRESS_ANSWER_RECEIVER) {
+                            
+                                state = A_SDR;
+                            }
+                            else if (response[i] == FLAG) {
+                            
+                                state = FLAG_SDR;
+                            }
+                            else {
+                                state = START;
+                            }
+                            break;
+                        case A_SDR:
+                            printf("A\n");
+                            if (response[i] == CONTROL_UA) {
+                                state = C_SDR;
+                            }
+                            else if (response[i] == FLAG) {
+                            
+                                state = FLAG_SDR;
+                            }
+                            else {
+                                state = START;
+                            }
+                            break;
+                        case C_SDR:
+                            printf("C\n");
+                            if (response[i] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA)) {
+                                state = BCC_OK;
+                            }
+                            else if (response[i] == CONTROL_UA) {
+                                
+                                state = FLAG_SDR;
+                            }
+                            else {
+                                
+                                state = START;
+                            }
+                            break;
+                        case BCC_OK:
+                            printf("BCC\n");
+                            if (response[i] == FLAG) {
+                                
+                                state = STOP_SDR;
+                            }
+                            else {
+
+                                state = START;
+                            }
+                            break;
+                        case STOP_SDR:
+                            printf("STOP\n");
+                            printf("Received UA frame successfully.\n");
+                            responseReceived = TRUE;
+                            alarm(0);
+                            break;
+                        default:
+                            state = START;
+                            break;
+                    }
+                }
+            }
+            else {
+                //printf("No frame received.\n");
+            }
+        }
+    }
 
     printf("Ending program\n");
 
