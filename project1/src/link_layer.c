@@ -287,14 +287,13 @@ int llwrite(const unsigned char *buf, int bufSize)
 {
     // TODO
     int inf_frame_size = 6 + bufSize;
-    unsigned char *frame = (unsigned char *) malloc(inf_frame_size);
+    unsigned char *stuffed_frame = (unsigned char *)malloc(2 * inf_frame_size);
 
     frame[0] = FLAG;
     frame[1] = ADDRESS_SENT_TRANSMITTER;
     frame[2] = C_N(frameNumberT);
     frame[3] = ADDRESS_SENT_TRANSMITTER ^ C_N(frameNumberT);
 
-    memcpy(frame+4,buf, bufSize);
     unsigned char BCC2 = 0;
     for (unsigned int i = 0; i < bufSize; i++) {
         BCC2 ^= buf[i]; // doing XOR of each byte with BCC2
@@ -302,30 +301,23 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     int j = 4;
     for (int i = 0; i < bufSize; i++) {
-        if (buf[i] == FLAG || buf[i] == ESC) {
-            unsigned char *temp = realloc(frame, ++inf_frame_size);
-            if (temp != NULL) {
-                frame = temp;
-                frame[j++] = ESC; //byte stuffing
-            }
-            else {
-                free(frame);
-                return -1;
-            }
+        if (buf[i] == FLAG) {
+            stuffed_frame[j++] = ESC;
+            stuffed_frame[j++] = FLAG ^ 0X20;
         }
-        frame[j++] = buf[i];
+        else if (buf[i] == ESC) {
+            stuffed_frame[j++] = ESC;
+            stuffed_frame[j++] = ESC ^ 0x20;
+        }
+        else {
+            stuffed_frame[j++] = buf[i];
+        }
     }
 
-    // Ensure space for BCC2 and FLAG.
-    unsigned char *temp = realloc(frame, inf_frame_size + 2);
-    if (temp == NULL) {
-        free(frame);
-        return -1; // Memory allocation failed.
-    }
-    frame = temp;
-
-    frame[j++] = BCC2;
-    frame[j++] = FLAG;
+    stuffed_frame[j++] = BCC2;
+    stuffed_frame[j++] = FLAG;
+    
+    inf_frame_size = j;
 
     int current_transmission = 0;
     int rejected = 0;
