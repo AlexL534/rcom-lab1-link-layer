@@ -22,13 +22,13 @@ void alarmHandler(int signal)
     printf("Alarm #%d\n", alarmCount);
 }
 
-unsigned char checkControl(int fd) {
+unsigned char checkControl() {
     unsigned char byte;
     unsigned char c = 0;
     SenderState state = START_S;
 
     while (state != STOP_SDR && alarmEnabled == FALSE) {
-        if (read(fd,&byte, 1) > 0) {
+        if (readByteSerialPort(&byte)) {
             switch (state) {
                 case START_S:
                     if (byte == FLAG) state = FLAG_SDR;
@@ -89,14 +89,12 @@ int llopen(LinkLayer connectionParameters)
             // Create string to send
             unsigned char bufS[5] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG};
 
-            unsigned char response[BUF_SIZE] = {0};
-            int response_bytes = 0;
             SenderState senderState = START_S;
 
             while (alarmCount < ALARM_MAX_RETRIES && !responseReceived) {
                 if (alarmEnabled == FALSE)
                 {
-                    int bytes = write(fd, bufS, 5);
+                    int bytes = writeBytesSerialPort(bufS,5);
                     sleep(1); 
                     printf("%d bytes written\n", bytes);
                     alarm(3); // Set alarm to be triggered in 3s
@@ -104,86 +102,81 @@ int llopen(LinkLayer connectionParameters)
                     alarmEnabled = TRUE;
                 }
 
-                response_bytes = read(fd, response, BUF_SIZE);
+                unsigned char response_byte = readByteSerialPort(&response_byte);
 
-                if (response_bytes > 0) {
-                    for (int i = 0; i <= response_bytes; i++) {
-                        switch(senderState) {
-                            case START_S:
-                                printf("start\n");
-                                if (response[i] == FLAG) {
-                                    senderState = FLAG_SDR;
-                                }
-                                else {
-                                    senderState = START_S;
-                                }
-                                break;
-                            case FLAG_SDR:
-                                printf("flag\n");
-                                if (response[i] == ADDRESS_ANSWER_RECEIVER) {
-                                
-                                    senderState = A_SDR;
-                                }
-                                else if (response[i] == FLAG) {
-                                
-                                    senderState = FLAG_SDR;
-                                }
-                                else {
-                                    senderState = START_S;
-                                }
-                                break;
-                            case A_SDR:
-                                printf("A\n");
-                                if (response[i] == CONTROL_UA) {
-                                    senderState = C_SDR;
-                                }
-                                else if (response[i] == FLAG) {
-                                
-                                    senderState = FLAG_SDR;
-                                }
-                                else {
-                                    senderState = START_S;
-                                }
-                                break;
-                            case C_SDR:
-                                printf("C\n");
-                                if (response[i] == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA)) {
-                                    senderState = BCC_OK_S;
-                                }
-                                else if (response[i] == CONTROL_UA) {
-                                    
-                                    senderState = FLAG_SDR;
-                                }
-                                else {
-                                    
-                                    senderState = START_S;
-                                }
-                                break;
-                            case BCC_OK_S:
-                                printf("BCC\n");
-                                if (response[i] == FLAG) {
-                                    
-                                    senderState = STOP_SDR;
-                                }
-                                else {
-
-                                    senderState = START_S;
-                                }
-                                break;
-                            case STOP_SDR:
-                                printf("STOP\n");
-                                printf("Received UA frame successfully.\n");
-                                responseReceived = TRUE;
-                                alarm(0);
-                                break;
-                            default:
+                for (int i = 0; i <= response_byte; i++) {
+                    switch(senderState) {
+                        case START_S:
+                            printf("start\n");
+                            if (response_byte == FLAG) {
+                                senderState = FLAG_SDR;
+                            }
+                            else {
                                 senderState = START_S;
-                                break;
-                        }
+                            }
+                            break;
+                        case FLAG_SDR:
+                            printf("flag\n");
+                            if (response_byte == ADDRESS_ANSWER_RECEIVER) {
+                            
+                                senderState = A_SDR;
+                            }
+                            else if (response_byte == FLAG) {
+                            
+                                senderState = FLAG_SDR;
+                            }
+                            else {
+                                senderState = START_S;
+                            }
+                            break;
+                        case A_SDR:
+                            printf("A\n");
+                            if (response_byte == CONTROL_UA) {
+                                senderState = C_SDR;
+                            }
+                            else if (response_byte == FLAG) {
+                            
+                                senderState = FLAG_SDR;
+                            }
+                            else {
+                                senderState = START_S;
+                            }
+                            break;
+                        case C_SDR:
+                            printf("C\n");
+                            if (response_byte == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA)) {
+                                senderState = BCC_OK_S;
+                            }
+                            else if (response_byte == CONTROL_UA) {
+                                
+                                senderState = FLAG_SDR;
+                            }
+                            else {
+                                
+                                senderState = START_S;
+                            }
+                            break;
+                        case BCC_OK_S:
+                            printf("BCC\n");
+                            if (response_byte == FLAG) {
+                                
+                                senderState = STOP_SDR;
+                            }
+                            else {
+
+                                senderState = START_S;
+                            }
+                            break;
+                        case STOP_SDR:
+                            printf("STOP\n");
+                            printf("Received UA frame successfully.\n");
+                            responseReceived = TRUE;
+                            alarm(0);
+                            break;
+                        default:
+                            senderState = START_S;
+                            break;
                     }
-                }
-                else {
-                    //printf("No frame received.\n");
                 }
             }
 
@@ -200,87 +193,82 @@ int llopen(LinkLayer connectionParameters)
             while (STOP == FALSE)
             {
                 // Returns after 5 chars have been input
-                int bytes = read(fd, buf, BUF_SIZE);
-                buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
+                int byte2 = readByteSerialPort(buf);
 
                 //printf(":%s:%d\n", buf, bytes); //prints frame received
-                if (bytes > 0) {
-                    for (int i = 0; i < bytes; i++) {
-                        if (STOP == TRUE) break; 
-                        switch(ReceiverState) {
-                            case START_R:
-                            printf("start\n");
-                                if (buf[i] == FLAG) {
-                                    ReceiverState = FLAG_RCV;
-                                }
-                                else {
-                                    ReceiverState = START_R;
-                                }
-                                break;
-                            case FLAG_RCV:
-                                printf("flag\n");
-                                if (buf[i] == ADDRESS_SENT_TRANSMITTER) {
-                                
-                                    ReceiverState = A_RCV;
-                                }
-                                else if (buf[i] == FLAG) {
-                                
-                                    ReceiverState = FLAG_RCV;
-                                }
-                                else {
-                                    ReceiverState = START_R;
-                                }
-                                break;
-                            case A_RCV:
-                                printf("A\n");
-                                if (buf[i] == CONTROL_SET) {
-                                    ReceiverState = C_RCV;
-                                }
-                                else if (buf[i] == FLAG) {
-                                
-                                    ReceiverState = FLAG_RCV;
-                                }
-                                else {
-                                    ReceiverState = START_R;
-                                }
-                                break;
-                            case C_RCV:
-                                printf("C\n");
-                                if (buf[i] == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
-                                    ReceiverState = BCC_OK_R;
-                                }
-                                else if (buf[i] == CONTROL_SET) {
-                                    
-                                    ReceiverState = FLAG_RCV;
-                                }
-                                else {
-                                    
-                                    ReceiverState = START_R;
-                                }
-                                break;
-                            case BCC_OK_R:
-                                printf("BCC\n");
-                                if (buf[i] == FLAG) {
-                                    
-                                    ReceiverState = STOP_RCV;
-                                }
-                                else { 
-
-                                    ReceiverState = START_R;
-                                }
-                                break;
-                            case STOP_RCV:
-                                printf("STOP\n");
-                                unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
-                                write(fd, uaFrame, 5);
-                                printf("Sent UA frame\n");
-                                STOP = TRUE;
-                                break;
-                            default:
-                                ReceiverState = START_R;
-                                break;
+                if (STOP == TRUE) break; 
+                switch(ReceiverState) {
+                    case START_R:
+                    printf("start\n");
+                        if (byte2 == FLAG) {
+                            ReceiverState = FLAG_RCV;
                         }
-                    }
+                        else {
+                            ReceiverState = START_R;
+                        }
+                        break;
+                    case FLAG_RCV:
+                        printf("flag\n");
+                        if (byte2 == ADDRESS_SENT_TRANSMITTER) {
+                        
+                            ReceiverState = A_RCV;
+                        }
+                        else if (byte2 == FLAG) {
+                        
+                            ReceiverState = FLAG_RCV;
+                        }
+                        else {
+                            ReceiverState = START_R;
+                        }
+                        break;
+                    case A_RCV:
+                        printf("A\n");
+                        if (byte2 == CONTROL_SET) {
+                            ReceiverState = C_RCV;
+                        }
+                        else if (byte2 == FLAG) {
+                        
+                            ReceiverState = FLAG_RCV;
+                        }
+                        else {
+                            ReceiverState = START_R;
+                        }
+                        break;
+                    case C_RCV:
+                        printf("C\n");
+                        if (byte2 == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
+                            ReceiverState = BCC_OK_R;
+                        }
+                        else if (byte2 == CONTROL_SET) {
+                            
+                            ReceiverState = FLAG_RCV;
+                        }
+                        else {
+                            
+                            ReceiverState = START_R;
+                        }
+                        break;
+                    case BCC_OK_R:
+                        printf("BCC\n");
+                        if (byte2 == FLAG) {
+                            
+                            ReceiverState = STOP_RCV;
+                        }
+                        else { 
+
+                            ReceiverState = START_R;
+                        }
+                        break;
+                    case STOP_RCV:
+                        printf("STOP\n");
+                        unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
+                        writeBytesSerialPort(uaFrame, 5);
+                        printf("Sent UA frame\n");
+                        STOP = TRUE;
+                        break;
+                    default:
+                        ReceiverState = START_R;
+                        break;
                 }
             }
             break;
@@ -295,7 +283,7 @@ return 1;
 ////////////////////////////////////////////////
 // LLWRITE
 ////////////////////////////////////////////////
-int llwrite(int fd, const unsigned char *buf, int bufSize)
+int llwrite(const unsigned char *buf, int bufSize)
 {
     // TODO
     int inf_frame_size = 6 + bufSize;
@@ -350,8 +338,8 @@ int llwrite(int fd, const unsigned char *buf, int bufSize)
         accepted = 0;
 
         while (!alarmEnabled && !rejected && !accepted) {
-            write(fd, frame, j);
-            unsigned char command = checkControl(fd);
+            writeBytesSerialPort(frame, j);
+            unsigned char command = checkControl();
 
             if (command == REJ0 || command == REJ1) {
                 rejected = 1;
@@ -371,7 +359,7 @@ int llwrite(int fd, const unsigned char *buf, int bufSize)
     free(frame);
     if (accepted) return inf_frame_size;
     else {
-        llclose(fd, 1); //o 2º argumento não é 1, só meti para encher
+        llclose(0); //o 2º argumento não é 1, só meti para encher
         return -1;
     }
 
@@ -381,7 +369,7 @@ int llwrite(int fd, const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 // LLREAD
 ////////////////////////////////////////////////
-int llread(int fd, unsigned char *packet)
+int llread(unsigned char *packet)
 {
     // TODO
 
@@ -391,7 +379,7 @@ int llread(int fd, unsigned char *packet)
 ////////////////////////////////////////////////
 // LLCLOSE
 ////////////////////////////////////////////////
-int llclose(int fd, int showStatistics)
+int llclose(int showStatistics)
 {
     // TODO
 
