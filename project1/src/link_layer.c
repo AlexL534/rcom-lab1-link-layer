@@ -314,7 +314,18 @@ int llwrite(const unsigned char *buf, int bufSize)
         }
     }
 
-    stuffed_frame[j++] = BCC2;
+    if (BCC2 == FLAG) {
+        stuffed_frame[j++] = ESC;
+        stuffed_frame[j++] = FLAG ^ 0x20;
+    } 
+    else if (BCC2 == ESC) {
+        stuffed_frame[j++] = ESC;
+        stuffed_frame[j++] = ESC ^ 0x20;
+    } 
+    else {
+        stuffed_frame[j++] = BCC2;
+    }
+    
     stuffed_frame[j++] = FLAG;
     
     inf_frame_size = j;
