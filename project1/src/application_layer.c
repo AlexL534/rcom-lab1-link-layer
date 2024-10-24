@@ -9,7 +9,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     linklayer.baudRate = baudRate;
     linklayer.nRetransmissions = nTries;
     linklayer.timeout = timeout;
-    linklayer.role = strcmp(role, "tx") == 0 ? LlRx : LlTx;
+    linklayer.role = strcmp(role, "tx") == 0 ? LlTx : LlRx;
 
     llopen(linklayer);
 }

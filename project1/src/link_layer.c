@@ -102,9 +102,9 @@ int llopen(LinkLayer connectionParameters)
                     alarmEnabled = TRUE;
                 }
 
-                unsigned char response_byte = readByteSerialPort(&response_byte);
+                unsigned char response_byte;
 
-                for (int i = 0; i <= response_byte; i++) {
+                if (readByteSerialPort(&response_byte)) {
                     switch(senderState) {
                         case START_S:
                             printf("start\n");
@@ -147,7 +147,7 @@ int llopen(LinkLayer connectionParameters)
                             if (response_byte == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA)) {
                                 senderState = BCC_OK_S;
                             }
-                            else if (response_byte == CONTROL_UA) {
+                            else if (response_byte == FLAG) {
                                 
                                 senderState = FLAG_SDR;
                             }
