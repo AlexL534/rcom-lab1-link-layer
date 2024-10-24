@@ -405,7 +405,97 @@ int llread(unsigned char *packet)
                     supervisionFrame[2] = DISC;
                     supervisionFrame[3] = ADDRESS_SENT_RECEIVER ^ DISC;
                     supervisionFrame[4] = FLAG;
-                    writeBytesSerialPort(supervisionFrame, 5);
+                    ReceiverState receiverState = START_R;
+                    (void)signal(SIGALRM, alarmHandler);
+                    if (alarmEnabled == FALSE)
+                    {
+                        int bytes = writeBytesSerialPort(supervisionFrame,5);
+                        sleep(1); 
+                        printf("%d bytes written\n", bytes);
+                        alarm(3); // Set alarm to be triggered in 3s
+                        
+                        alarmEnabled = TRUE;
+                    }
+
+                    unsigned char response_byte;
+                    STOP = FALSE;
+
+                    while (STOP == FALSE) {
+                        if (readByteSerialPort(&response_byte)) {
+                            switch(receiverState) {
+                                case START_R:
+                                    printf("start\n");
+                                    if (response_byte == FLAG) {
+                                        receiverState = FLAG_RCV;
+                                    }
+                                    else {
+                                        receiverState = START_R;
+                                    }
+                                    break;
+                                case FLAG_RCV:
+                                    printf("flag\n");
+                                    if (response_byte == ADDRESS_ANSWER_TRANSMITTER) {
+                                    
+                                        receiverState = A_RCV;
+                                    }
+                                    else if (response_byte == FLAG) {
+                                    
+                                        receiverState = FLAG_RCV;
+                                    }
+                                    else {
+                                        receiverState = START_R;
+                                    }
+                                    break;
+                                case A_RCV:
+                                    printf("A\n");
+                                    if (response_byte == CONTROL_UA) {
+                                        receiverState = C_RCV;
+                                    }
+                                    else if (response_byte == FLAG) {
+                                    
+                                        receiverState = FLAG_RCV;
+                                    }
+                                    else {
+                                        receiverState = START_R;
+                                    }
+                                    break;
+                                case C_RCV:
+                                    printf("C\n");
+                                    if (response_byte == (ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA)) {
+                                        receiverState = BCC_OK_R;
+                                    }
+                                    else if (response_byte == FLAG) {
+                                        
+                                        receiverState = FLAG_RCV;
+                                    }
+                                    else {
+                                        
+                                        receiverState = START_R;
+                                    }
+                                    break;
+                                case BCC_OK_R:
+                                    printf("BCC\n");
+                                    if (response_byte == FLAG) {
+                                        
+                                        receiverState = STOP_RCV;
+                                    }
+                                    else {
+
+                                        receiverState = START_R;
+                                    }
+                                    break;
+                                case STOP_RCV:
+                                    STOP = TRUE;
+                                    printf("STOP\n");
+                                    printf("Received UA frame successfully.\n");
+                                    alarm(0);
+                                    break;
+                                default:
+                                    receiverState = START_S;
+                                    break;
+                            }
+                        }
+                    }
                     return 0;
                 }
                 else state = START_R;
