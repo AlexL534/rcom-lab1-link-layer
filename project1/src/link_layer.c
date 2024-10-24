@@ -374,9 +374,100 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 int llread(unsigned char *packet)
 {
-    // TODO
+    unsigned char byte; 
+    unsigned char c = 0;
+    int x = 0;
+    unsigned char supervisionFrame[5];
+    ReceiverState state = START_R;
 
-    return 0;
+    while (state != STOP_RCV) {
+        if (readByteSerialPort(&byte)) {
+            switch (state) {
+            case START_R:
+                if (byte == FLAG) state = FLAG_RCV;
+                break;
+
+            case FLAG_RCV:
+                if (byte == ADDRESS_SENT_TRANSMITTER) state = A_RCV;
+                else if (byte == FLAG) state = FLAG_RCV;
+                else state = START_R;
+                break;
+
+            case A_RCV:
+                if (byte == C_N(0) || byte == C_N(1)) {
+                    state = C_RCV;
+                    c = byte;
+                } 
+                else if (byte == FLAG) state = FLAG_RCV;
+                else if (byte == DISC) {
+                    supervisionFrame[0] = FLAG;
+                    supervisionFrame[1] = ADDRESS_SENT_RECEIVER;
+                    supervisionFrame[2] = DISC;
+                    supervisionFrame[3] = ADDRESS_SENT_RECEIVER ^ DISC;
+                    supervisionFrame[4] = FLAG;
+                    writeBytesSerialPort(supervisionFrame, 5);
+                    return 0;
+                }
+                else state = START_R;
+                break;
+            
+            case C_RCV:
+                if (byte == (ADDRESS_SENT_TRANSMITTER ^ c)) state = READ_DATA;
+                else if (byte == FLAG) state = FLAG_RCV;
+                else state = START_R;
+                break;
+
+            case READ_DATA:
+                if (byte == ESC) state = ESC_FOUND;
+                else if (byte == FLAG) {
+                    unsigned char bcc2 = packet[--x];
+
+                    unsigned char acc = 0;
+                    for (unsigned int i = 0; i < x; i++) {
+                        acc ^= packet[i];
+                    }
+
+                    if (bcc2 == acc) {
+                        state = STOP_RCV;
+                        unsigned char cResponse = frameNumberR ? RR1 : RR0;
+                        unsigned char supervisionFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
+                        writeBytesSerialPort(supervisionFrame, 5);
+                        frameNumberR = (frameNumberR + 1) % 2;
+                        return x;
+                    }
+                    else {
+                        printf("Error retransmission\n");
+                        unsigned char cResponse = frameNumberR ? REJ1 : REJ0;
+                        unsigned char supervisionFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse};
+                        writeBytesSerialPort(supervisionFrame, 5);
+                        return -1;
+                    }
+                }
+                else {
+                    packet[x++] = byte;
+                }
+                break;
+
+            case ESC_FOUND:
+                if (byte == (FLAG ^ 0x20)) {
+                    packet[x++] = FLAG;
+                }
+                else if (byte == (ESC ^ 0x20)) {
+                    packet[x++] = ESC;
+                }
+                else {
+                    state = START_R;
+                }
+                state = READ_DATA;
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
+
+    return -1;
 }
 
 ////////////////////////////////////////////////

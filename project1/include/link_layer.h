@@ -49,6 +49,8 @@ typedef enum {
     C_RCV,
     BCC_OK_R,
     STOP_RCV,
+    READ_DATA,
+    ESC_FOUND,
 } ReceiverState;
 
 typedef enum {
