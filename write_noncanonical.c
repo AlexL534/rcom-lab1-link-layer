@@ -88,7 +88,7 @@ unsigned char checkControl(int fd) {
                 case A_SDR:
                     if (byte == RR0 || byte == RR1 || byte == REJ0 || byte == REJ1 || byte == DISC) {
                         state = C_SDR;
-                        c = byte;
+                        c = byte; //transmissor recebe comando
                     }
                     else if (byte == FLAG) state = FLAG_SDR;
                     else state = START;
@@ -326,33 +326,34 @@ int main(int argc, char *argv[]) {
     
     inf_frame_size = j;
 
-    int current_transmission = 0;
+    int current_transmission = -1;
     int rejected = 0;
     int accepted = 0;
 
-    while (current_transmission < retransmisions) {
-        alarmEnabled = FALSE;
-        alarm(timeout);
+    while (current_transmission <= retransmisions) {
         rejected = 0;
         accepted = 0;
 
-        while (!alarmEnabled && !rejected && !accepted) {
+        if (!alarmEnabled) {
+            current_transmission++;
+            if (current_transmission > retransmisions) break;
+            alarmEnabled = TRUE;
+            alarm(timeout);
             write(fd, stuffed_frame, j);
-            unsigned char command = checkControl(fd);
+        }
 
-            if (command == REJ0 || command == REJ1) {
-                rejected = 1;
-            }
+        unsigned char command = checkControl(fd);
 
-            else if (command == RR0 || command == RR1) {
-                accepted = 1;
-                frameNumberT = (frameNumberT + 1) % 2;
-            }
-            
+        if (command == REJ0 || command == REJ1) {
+            rejected = 1;
+        }
+
+        else if (command == RR0 || command == RR1) {
+            accepted = 1;
+            frameNumberT = (frameNumberT + 1) % 2;
         }
 
         if (accepted) break;
-        current_transmission++;
     }
 
     free(stuffed_frame);
