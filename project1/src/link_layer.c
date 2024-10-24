@@ -660,7 +660,6 @@ int llclose(int showStatistics)
     }
 
     printf("Ending program\n");
-    break;
 
     int clstat = closeSerialPort();
     return clstat;
