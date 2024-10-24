@@ -285,29 +285,46 @@ int main(int argc, char *argv[]) {
     unsigned char buf2[256];
     int bufsize = 256; //random value, bufsize is needed because it is one of the arguments of llwrite
     int inf_frame_size = 6 + bufsize;
-    unsigned char *frame = (unsigned char *) malloc(inf_frame_size);
+    unsigned char *stuffed_frame = (unsigned char *)malloc(2 * inf_frame_size);
 
-    frame[0] = FLAG;
-    frame[1] = ADDRESS_SENT_TRANSMITTER;
-    frame[2] = C_N(frameNumberT);
-    frame[3] = ADDRESS_SENT_TRANSMITTER ^ C_N(frameNumberT);
+    stuffed_frame[0] = FLAG;
+    stuffed_frame[1] = ADDRESS_SENT_TRANSMITTER;
+    stuffed_frame[2] = C_N(frameNumberT);
+    stuffed_frame[3] = ADDRESS_SENT_TRANSMITTER ^ C_N(frameNumberT);
 
-    memcpy(frame+4,buf2, bufsize);
     unsigned char BCC2 = 0;
     for (unsigned int i = 0; i < bufsize; i++) {
-        BCC2 ^= buf2[i]; // doing XOR of each byte with BCC2
+        BCC2 ^= buf[i]; // doing XOR of each byte with BCC2
     }
 
     int j = 4;
     for (int i = 0; i < bufsize; i++) {
-        if (buf2[i] == FLAG || buf2[i] == ESC) {
-            frame = realloc(frame, inf_frame_size++);
-            frame[j++] = ESC; // Stuff with ESC byte
+        if (buf[i] == FLAG) {
+            stuffed_frame[j++] = ESC;
+            stuffed_frame[j++] = FLAG ^ 0X20;
         }
-        frame[j++] = buf2[i];
+        else if (buf[i] == ESC) {
+            stuffed_frame[j++] = ESC;
+            stuffed_frame[j++] = ESC ^ 0x20;
+        }
+        else {
+            stuffed_frame[j++] = buf[i];
+        }
     }
-    frame[j++] = BCC2;
-    frame[j++] = FLAG;
+
+    if (BCC2 == FLAG) {
+    stuffed_frame[j++] = ESC;
+    stuffed_frame[j++] = FLAG ^ 0x20;
+    }
+    else if (BCC2 == ESC) {
+        stuffed_frame[j++] = ESC;
+        stuffed_frame[j++] = ESC ^ 0x20;
+    }
+    else {
+        stuffed_frame[j++] = BCC2;
+    }
+    
+    inf_frame_size = j;
 
     int current_transmission = 0;
     int rejected = 0;
@@ -320,7 +337,7 @@ int main(int argc, char *argv[]) {
         accepted = 0;
 
         while (!alarmEnabled && !rejected && !accepted) {
-            write(fd, frame, j);
+            write(fd, stuffed_frame, j);
             unsigned char command = checkControl(fd);
 
             if (command == REJ0 || command == REJ1) {
@@ -338,7 +355,7 @@ int main(int argc, char *argv[]) {
         current_transmission++;
     }
 
-    free(frame);
+    free(stuffed_frame);
     if (accepted) return inf_frame_size;
 
     printf("Ending program\n");
