@@ -135,91 +135,91 @@
         printf("New termios structure set\n");
 
         // Loop for input
-        unsigned char buf[BUF_SIZE + 1] = {0}; // +1: Save space for the final '\0' char
+        unsigned char buf[1] = {0}; // +1: Save space for the final '\0' char
         ReceiverState state = START;
         while (STOP == FALSE)
         {
             // Returns after 5 chars have been input
-            int bytes = read(fd, buf, BUF_SIZE);
-            buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
+            int bytes = read(fd, buf, 1);
+            //buf[bytes] = '\0'; // Set end of string to '\0', so we can printf
+
+            unsigned char readByte = buf[0];
 
             //printf(":%s:%d\n", buf, bytes); //prints frame received
             if (bytes > 0) {
-                for (int i = 0; i < bytes; i++) {
-                    if (STOP == TRUE) break; 
-                    switch(state) {
-                        case START:
-                        printf("start\n");
-                            if (buf[i] == FLAG) {
-                                state = FLAG_RCV;
-                            }
-                            else {
-                                state = START;
-                            }
-                            break;
-                        case FLAG_RCV:
-                            printf("flag\n");
-                            if (buf[i] == ADDRESS_SENT_TRANSMITTER) {
-                            
-                                state = A_RCV;
-                            }
-                            else if (buf[i] == FLAG) {
-                            
-                                state = FLAG_RCV;
-                            }
-                            else {
-                                state = START;
-                            }
-                            break;
-                        case A_RCV:
-                            printf("A\n");
-                            if (buf[i] == CONTROL_SET) {
-                                state = C_RCV;
-                            }
-                            else if (buf[i] == FLAG) {
-                            
-                                state = FLAG_RCV;
-                            }
-                            else {
-                                state = START;
-                            }
-                            break;
-                        case C_RCV:
-                            printf("C\n");
-                            if (buf[i] == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
-                                state = BCC_OK;
-                            }
-                            else if (buf[i] == CONTROL_SET) {
-                                
-                                state = FLAG_RCV;
-                            }
-                            else {
-                                
-                                state = START;
-                            }
-                            break;
-                        case BCC_OK:
-                            printf("BCC\n");
-                            if (buf[i] == FLAG) {
-                                
-                                state = STOP_RCV;
-                            }
-                            else { 
-
-                                state = START;
-                            }
-                            break;
-                        case STOP_RCV:
-                            printf("STOP\n");
-                            unsigned char uaFrame[6] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG, '\0'};
-                            write(fd, uaFrame, 6);
-                            printf("Sent UA frame\n");
-                            STOP = TRUE;
-                            break;
-                        default:
+                if (STOP == TRUE) break; 
+                switch(state) {
+                    case START:
+                    printf("start\n");
+                        if (readByte == FLAG) {
+                            state = FLAG_RCV;
+                        }
+                        else {
                             state = START;
-                            break;
-                    }
+                        }
+                        break;
+                    case FLAG_RCV:
+                        printf("flag\n");
+                        if (readByte == ADDRESS_SENT_TRANSMITTER) {
+                        
+                            state = A_RCV;
+                        }
+                        else if (readByte == FLAG) {
+                        
+                            state = FLAG_RCV;
+                        }
+                        else {
+                            state = START;
+                        }
+                        break;
+                    case A_RCV:
+                        printf("A\n");
+                        if (readByte == CONTROL_SET) {
+                            state = C_RCV;
+                        }
+                        else if (readByte == FLAG) {
+                        
+                            state = FLAG_RCV;
+                        }
+                        else {
+                            state = START;
+                        }
+                        break;
+                    case C_RCV:
+                        printf("C\n");
+                        if (readByte == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
+                            state = BCC_OK;
+                        }
+                        else if (readByte == CONTROL_SET) {
+                            
+                            state = FLAG_RCV;
+                        }
+                        else {
+                            
+                            state = START;
+                        }
+                        break;
+                    case BCC_OK:
+                        printf("BCC\n");
+                        if (readByte == FLAG) {
+                            
+                            state = STOP_RCV;
+                        }
+                        else { 
+
+                            state = START;
+                        }
+                        break;
+                    case STOP_RCV:
+                        printf("STOP\n");
+                        unsigned char uaFrame[6] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG, '\0'};
+                        write(fd, uaFrame, 6);
+                        printf("Sent UA frame\n");
+                        STOP = TRUE;
+                        break;
+                    default:
+                        state = START;
+                        break;
                 }
             }
         }
@@ -232,6 +232,7 @@
 
         while (state != STOP_RCV) {
             if (read(fd,&byte, 1) > 0) {
+                switch (state) {
                 case START:
                     if (byte == FLAG) state = FLAG_RCV;
                     break;
@@ -271,11 +272,9 @@
 
                 default:
                     break;
+                }
             }
         }
-
-        // The while() cycle should be changed in order to respect the specifications
-        // of the protocol indicated in the Lab guide
 
         // Restore the old port settings
         if (tcsetattr(fd, TCSANOW, &oldtio) == -1)
