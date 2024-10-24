@@ -476,6 +476,110 @@ int llread(unsigned char *packet)
 int llclose(int showStatistics)
 {
     // TODO
+    responseReceived = FALSE;
+    (void)signal(SIGALRM, alarmHandler);
+
+    // Create string to send
+    unsigned char bufS[5] = {FLAG, ADDRESS_SENT_TRANSMITTER, DISC, ADDRESS_SENT_TRANSMITTER ^ DISC, FLAG};
+
+    SenderState senderState = START_S;
+
+    while (alarmCount < ALARM_MAX_RETRIES && !responseReceived) {
+        if (alarmEnabled == FALSE)
+        {
+            int bytes = writeBytesSerialPort(bufS,5);
+            sleep(1); 
+            printf("%d bytes written\n", bytes);
+            alarm(3); // Set alarm to be triggered in 3s
+            
+            alarmEnabled = TRUE;
+        }
+
+        unsigned char response_byte = readByteSerialPort(&response_byte);
+
+        if (response_byte > 0) {
+            switch(senderState) {
+                case START_S:
+                    printf("start\n");
+                    if (response_byte == FLAG) {
+                        senderState = FLAG_SDR;
+                    }
+                    else {
+                        senderState = START_S;
+                    }
+                    break;
+                case FLAG_SDR:
+                    printf("flag\n");
+                    if (response_byte == ADDRESS_SENT_RECEIVER) {
+                    
+                        senderState = A_SDR;
+                    }
+                    else if (response_byte == FLAG) {
+                    
+                        senderState = FLAG_SDR;
+                    }
+                    else {
+                        senderState = START_S;
+                    }
+                    break;
+                case A_SDR:
+                    printf("A\n");
+                    if (response_byte == DISC) {
+                        senderState = C_SDR;
+                    }
+                    else if (response_byte == FLAG) {
+                    
+                        senderState = FLAG_SDR;
+                    }
+                    else {
+                        senderState = START_S;
+                    }
+                    break;
+                case C_SDR:
+                    printf("C\n");
+                    if (response_byte == (ADDRESS_SENT_RECEIVER ^ DISC)) {
+                        senderState = BCC_OK_S;
+                    }
+                    else if (response_byte == FLAG) {
+                        
+                        senderState = FLAG_SDR;
+                    }
+                    else {
+                        
+                        senderState = START_S;
+                    }
+                    break;
+                case BCC_OK_S:
+                    printf("BCC\n");
+                    if (response_byte == FLAG) {
+                        
+                        senderState = STOP_SDR;
+                    }
+                    else {
+
+                        senderState = START_S;
+                    }
+                    break;
+                case STOP_SDR:
+                    printf("STOP\n");
+                    printf("Read DISC frame successfully.\n");
+                    break;
+                default:
+                    senderState = START_S;
+                    break;
+            }
+            if (senderState == STOP_SDR) {
+                responseReceived = TRUE;
+                alarm(0);
+                unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_TRANSMITTER, CONTROL_UA, ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA, FLAG};
+                writeBytesSerialPort(uaFrame, 5);
+                printf("Sent UA frame\n");
+            }
+        }
+    }
+
+    printf("Ending program\n");
+    break;
 
     int clstat = closeSerialPort();
     return clstat;
