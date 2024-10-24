@@ -289,10 +289,10 @@ int llwrite(const unsigned char *buf, int bufSize)
     int inf_frame_size = 6 + bufSize;
     unsigned char *stuffed_frame = (unsigned char *)malloc(2 * inf_frame_size);
 
-    frame[0] = FLAG;
-    frame[1] = ADDRESS_SENT_TRANSMITTER;
-    frame[2] = C_N(frameNumberT);
-    frame[3] = ADDRESS_SENT_TRANSMITTER ^ C_N(frameNumberT);
+    stuffed_frame[0] = FLAG;
+    stuffed_frame[1] = ADDRESS_SENT_TRANSMITTER;
+    stuffed_frame[2] = C_N(frameNumberT);
+    stuffed_frame[3] = ADDRESS_SENT_TRANSMITTER ^ C_N(frameNumberT);
 
     unsigned char BCC2 = 0;
     for (unsigned int i = 0; i < bufSize; i++) {
@@ -325,7 +325,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     else {
         stuffed_frame[j++] = BCC2;
     }
-    
+
     stuffed_frame[j++] = FLAG;
     
     inf_frame_size = j;
@@ -341,7 +341,7 @@ int llwrite(const unsigned char *buf, int bufSize)
         accepted = 0;
 
         while (!alarmEnabled && !rejected && !accepted) {
-            writeBytesSerialPort(frame, j);
+            writeBytesSerialPort(stuffed_frame, j);
             unsigned char command = checkControl();
 
             if (command == REJ0 || command == REJ1) {
@@ -359,7 +359,7 @@ int llwrite(const unsigned char *buf, int bufSize)
         current_transmission++;
     }
 
-    free(frame);
+    free(stuffed_frame);
     if (accepted) return inf_frame_size;
     else {
         llclose(0); //o 2º argumento não é 1, só meti para encher
