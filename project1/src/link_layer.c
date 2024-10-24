@@ -102,9 +102,9 @@ int llopen(LinkLayer connectionParameters)
                     alarmEnabled = TRUE;
                 }
 
-                unsigned char response_byte = readByteSerialPort(&response_byte);
+                unsigned char response_byte;
 
-                for (int i = 0; i <= response_byte; i++) {
+                if (readByteSerialPort(&response_byte)) {
                     switch(senderState) {
                         case START_S:
                             printf("start\n");
