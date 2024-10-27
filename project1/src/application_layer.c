@@ -11,5 +11,28 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     linklayer.timeout = timeout;
     linklayer.role = strcmp(role, "tx") == 0 ? LlTx : LlRx;
 
-    llopen(linklayer);
+    if (llopen(linklayer) == -1) {
+        perror("Could not establish connection\n");
+        exit(1);
+    }
+}
+
+unsigned char* parseControlPacket(unsigned char* packet, int size, unsigned long int *fileSize) {
+
+}
+
+void parseDataPacket(const unsigned char* packet, const unsigned int packetSize, unsigned char* buffer) {
+
+}
+
+unsigned char * getControlPacket(const unsigned int c, const char* filename, long int length, unsigned int* size) {
+
+}
+
+unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int dataSize, int *packetSize) {
+
+}
+
+unsigned char * getData(FILE* fd, long int fileLength) {
+
 }
