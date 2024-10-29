@@ -18,7 +18,42 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 }
 
 unsigned char* parseControlPacket(unsigned char* packet, int size, unsigned long int *fileSize) {
-    return 0;
+    if (size < 3) {
+        printf("Packet is too small to contain minimum required data\n");
+        return NULL;
+    }
+
+    *fileSize = 0;
+
+    unsigned char fileSizeBytes = packet[2];
+
+    if (size < 3 + fileSizeBytes) {
+        printf("Packet is too small to contain the declared file size field.\n");
+        return NULL;
+    }
+
+    for (unsigned int i = 0; i < fileSizeBytes; i++) {
+        *fileSize = (*fileSize << 8 | packet[3+i]);
+    }
+
+
+    if (size < 3 + fileSizeBytes + 2) {
+        printf("Packet is too small to contain the file name length byte.\n");
+        return NULL;
+    }
+
+    unsigned char fileNameBytes = packet[3 + fileSizeBytes + 1];
+
+    if (size < 3 + fileSizeBytes + 2 + fileNameBytes) {
+        printf("Packet is too small to contain the declared file name field.\n");
+        return NULL;
+    }
+
+    unsigned char *name = (unsigned char*)malloc(fileNameBytes+1);
+    memcpy(name, packet + 3 + fileSizeBytes + 2, fileNameBytes);
+    name[fileNameBytes] = '\0';
+
+    return name;
 }
 
 void parseDataPacket(const unsigned char* packet, const unsigned int packetSize, unsigned char* buffer) {
