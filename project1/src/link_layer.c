@@ -90,6 +90,8 @@ int llopen(LinkLayer connectionParameters)
             unsigned char bufS[5] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG};
 
             SenderState senderState = START_S;
+            alarmCount = 0;
+            alarmEnabled = FALSE;
 
             while (alarmCount < ALARM_MAX_RETRIES && senderState != STOP_SDR) {
                 if (alarmEnabled == FALSE)
@@ -161,6 +163,7 @@ int llopen(LinkLayer connectionParameters)
                             if (response_byte == FLAG) {
                                 
                                 senderState = STOP_SDR;
+                                alarm(0);
                             }
                             else {
 
@@ -173,11 +176,17 @@ int llopen(LinkLayer connectionParameters)
                     }
                 }
             }
-            printf("STOP\n");
-            printf("Received UA frame successfully.\n");
-            alarm(0);
+            if (senderState == STOP_SDR) {
+                printf("STOP\n");
+                printf("Received UA frame successfully.\n");
+                return 1;
+            }
 
-            printf("Ending program\n");
+            else {
+                printf("No response from receiver\n");
+                printf("Canceling operation..\n");
+                return -1;
+            }
             break;
         }
 
@@ -262,13 +271,14 @@ int llopen(LinkLayer connectionParameters)
             unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
             writeBytesSerialPort(uaFrame, 5);
             printf("Sent UA frame\n");
+            return 1;
             break;
         }
 
         default:
             break;
     }
-return 1;
+return -1;
 }
 
 ////////////////////////////////////////////////

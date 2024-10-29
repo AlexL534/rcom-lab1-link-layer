@@ -12,7 +12,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     linklayer.role = strcmp(role, "tx") == 0 ? LlTx : LlRx;
 
     if (llopen(linklayer) == -1) {
-        perror("Could not establish connection\n");
+        printf("Could not establish connection\n");
         exit(1);
     }
 }
