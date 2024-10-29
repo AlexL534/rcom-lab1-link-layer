@@ -57,7 +57,40 @@ unsigned char* parseControlPacket(unsigned char* packet, int size, unsigned long
 }
 
 void parseDataPacket(const unsigned char* packet, const unsigned int packetSize, unsigned char* buffer) {
+    if (packetSize < 5) {
+        printf("Invalid packet size\n");
+        return;
+    }
 
+    unsigned char controlField = packet[0];
+
+    if (controlField != 2) {
+        printf("Not a data packet\n");
+        return;
+    }
+
+    unsinged char sequenceNumber = packet[1];
+
+    unsigned short dataLength = (packet[2] << 8) | packet [3];
+
+    if (packetSize < 4 + dataLength) {
+        printf("Packet size does not match data length\n");
+        return;
+    }
+
+    memcpy(buffer, packet + 4, dataLength);
+
+    buffer[dataLength] = '\0';
+
+    //debugging
+    printf("Control Field: %u\n", controlField);
+    printf("Sequence Number: %u\n", sequenceNumber);
+    printf("Data Length: %u\n", dataLength);
+    printf("Data: ");
+    for (unsigned int i = 0; i < dataLength; i++) {
+        printf("%02X ", buffer[i]);
+    }
+    printf("\n");
 }
 
 unsigned char * getControlPacket(const unsigned int c, const char* filename, long int length, unsigned int* size) {
