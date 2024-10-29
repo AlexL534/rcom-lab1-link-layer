@@ -69,7 +69,7 @@ void parseDataPacket(const unsigned char* packet, const unsigned int packetSize,
         return;
     }
 
-    unsinged char sequenceNumber = packet[1];
+    unsigned char sequenceNumber = packet[1];
 
     unsigned short dataLength = (packet[2] << 8) | packet [3];
 
@@ -139,6 +139,19 @@ unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int d
     return packet;
 }
 
-unsigned char * getData(FILE* fd, long int fileLength) {
-    return 0;
+unsigned char *getData(FILE* fd, long int fileLength) {
+    unsigned char *data = (unsigned char *)malloc(fileLength);
+    if (!data) {
+        perror("Memory allocation failed");
+        return NULL;
+    }
+
+    size_t bytesRead = fread(data, 1, fileLength, fd);
+    if (bytesRead != fileLength) {
+        perror("File reading failed");
+        free(data);
+        return NULL;
+    }
+
+    return data;
 }
