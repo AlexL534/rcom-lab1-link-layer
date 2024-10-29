@@ -94,7 +94,31 @@ void parseDataPacket(const unsigned char* packet, const unsigned int packetSize,
 }
 
 unsigned char * getControlPacket(const unsigned int c, const char* filename, long int length, unsigned int* size) {
-    return 0;
+    if (!filename || length < 0 || !size) return NULL;
+
+    unsigned char fileSizeType = 0;
+    unsigned char fileSizeLength = sizeof(length);
+
+    unsigned char fileNameType = 1;
+    unsigned char fileNameLength = strlen(filename);
+
+    *size = 1 + 2 + fileSizeLength + 2 + fileNameLength;
+
+    unsigned char *packet = (unsigned char*)malloc(*size);
+    if (!packet) return NULL;
+
+    unsigned int index = 0;
+    packet[index++] = (unsigned char) c;
+    packet[index++] = fileSizeType;
+    for(int i = fileSizeLength - 1; i >= 0; i--) {
+        packet[index++] = (length >> (i * 8)) & 0xFF;
+    }
+
+    packet[index++] = fileNameType;
+    packet[index++] = fileNameLength;
+    memcpy(packet + index, filename, fileNameLength);
+ 
+    return packet;
 }
 
 unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int dataSize, int *packetSize) {
