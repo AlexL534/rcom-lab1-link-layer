@@ -326,19 +326,19 @@ int llwrite(const unsigned char *buf, int bufSize)
     int accepted = 0;
     alarmEnabled = FALSE;
 
-    while (current_transmission <= retransmisions) {
+    while (current_transmission <= retransmissions) {
         rejected = 0;
         accepted = 0;
 
         if (!alarmEnabled) {
             current_transmission++;
-            if (current_transmission > retransmisions) break;
+            if (current_transmission > retransmissions) break;
             alarmEnabled = TRUE;
             alarm(timeout);
-            write(fd, stuffed_frame, j);
+            writeBytesSerialPort(stuffed_frame, j);
         }
 
-        unsigned char command = checkControl(fd);
+        unsigned char command = checkControl();
 
         if (command == REJ0 || command == REJ1) {
             rejected = 1;
