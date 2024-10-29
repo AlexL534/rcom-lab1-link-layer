@@ -78,11 +78,11 @@ void parseDataPacket(const unsigned char* packet, const unsigned int packetSize,
         return;
     }
 
-    memcpy(buffer, packet + 4, dataLength);
-
+    memcpy(buffer, packet + 4, dataLength); 
     buffer[dataLength] = '\0';
 
     //debugging
+    /*
     printf("Control Field: %u\n", controlField);
     printf("Sequence Number: %u\n", sequenceNumber);
     printf("Data Length: %u\n", dataLength);
@@ -90,7 +90,8 @@ void parseDataPacket(const unsigned char* packet, const unsigned int packetSize,
     for (unsigned int i = 0; i < dataLength; i++) {
         printf("%02X ", buffer[i]);
     }
-    printf("\n");
+    printf("\n")
+    */
 }
 
 unsigned char * getControlPacket(const unsigned int c, const char* filename, long int length, unsigned int* size) {
@@ -98,18 +99,18 @@ unsigned char * getControlPacket(const unsigned int c, const char* filename, lon
 
     unsigned char fileSizeType = 0;
     unsigned char fileSizeLength = sizeof(length);
-
     unsigned char fileNameType = 1;
     unsigned char fileNameLength = strlen(filename);
 
     *size = 1 + 2 + fileSizeLength + 2 + fileNameLength;
-
     unsigned char *packet = (unsigned char*)malloc(*size);
     if (!packet) return NULL;
 
     unsigned int index = 0;
     packet[index++] = (unsigned char) c;
     packet[index++] = fileSizeType;
+    packet[index++] = fileSizeLength;
+
     for(int i = fileSizeLength - 1; i >= 0; i--) {
         packet[index++] = (length >> (i * 8)) & 0xFF;
     }
