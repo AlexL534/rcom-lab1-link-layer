@@ -122,7 +122,21 @@ unsigned char * getControlPacket(const unsigned int c, const char* filename, lon
 }
 
 unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int dataSize, int *packetSize) {
-    return 0;
+    *packetSize = 4 + dataSize; 
+
+    unsigned char *packet = (unsigned char*)malloc(*packetSize);
+    if (packet == NULL) return NULL;    
+
+    int index = 0;
+
+    packet[index++] == 2;
+    packet[index++] = sequence;
+    packet[index++] = (dataSize >> 8) & 0xFF;
+    packet[index++] = dataSize & 0xFF;
+
+    memcpy(packet + index, data, dataSize); 
+
+    return packet;
 }
 
 unsigned char * getData(FILE* fd, long int fileLength) {
