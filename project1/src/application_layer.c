@@ -25,6 +25,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             fseek(file, 0 , SEEK_END); //move to the end of the file
             long int fileSize = ftell(file); //get the size of the file
             fseek(file, 0, SEEK_SET); //return to start of the file
+            printf("Debug: File size = %ld bytes\n", fileSize); //debug
+
 
             unsigned int controlPacketSize;
             unsigned char *controlPacket = getControlPacket(2, filename, fileSize, &controlPacketSize);
@@ -40,8 +42,15 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             while (fileSize > 0) {
                 int dataSize = (fileSize > MAX_PAYLOAD_SIZE) ? MAX_PAYLOAD_SIZE : fileSize;
                 unsigned char *data = (unsigned char *)malloc(dataSize);
-                if (fread(data, sizeof(unsigned char), dataSize, file) != dataSize) {
-                    fprintf(stderr, "Error: Could not read file data\n");
+                if (data == NULL) {
+                    fprintf(stderr, "Error: Memory allocation failed\n");
+                    fclose(file);
+                    exit(1);
+                }
+
+                size_t bytesRead = fread(data, sizeof(unsigned char), dataSize, file);
+                if (bytesRead != dataSize) {
+                    fprintf(stderr, "Error: Could not read file data, bytes read: %zu, expected: %d\n", bytesRead, dataSize);
                     free(data);
                     fclose(file);
                     exit(1);
