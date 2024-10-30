@@ -105,7 +105,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 exit(-1);
             }
 
-            FILE *newFile = fopen((char*)filenameReceived, "wb");
+            FILE *newFile = fopen((char*)filenameReceived, "wb+");
             if (newFile == NULL) {
                 perror("Error creating file\n");
                 free(filenameReceived);
