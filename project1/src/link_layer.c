@@ -78,20 +78,17 @@ unsigned char checkControl() {
 ////////////////////////////////////////////////
 int llopen(LinkLayer connectionParameters) {
     int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);
-    if (fd < 0) {
-        perror("Failed to open serial port");
-        return -1;
-    }
-    
+    if (fd < 0) return -1;
+
     retransmissions = connectionParameters.nRetransmissions;
     timeout = connectionParameters.timeout;
-
-    (void)signal(SIGALRM, alarmHandler);
 
     switch (connectionParameters.role) {
         case LlTx: {
             isTx = TRUE;
             printf("\nNew termios structure set\n");
+
+            (void)signal(SIGALRM, alarmHandler);
 
             // Create string to send
             unsigned char bufS[FRAME_SIZE] = {FLAG, ADDRESS_SENT_TRANSMITTER, CONTROL_SET, ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET, FLAG};
@@ -167,7 +164,7 @@ int llopen(LinkLayer connectionParameters) {
             }
 
             else {
-                printf("No response from receiver.Canceling operation...\n");
+                printf("No response from receiver\nCanceling operation...\n");
                 return -1;
             }
             break;
@@ -176,6 +173,7 @@ int llopen(LinkLayer connectionParameters) {
         case LlRx: {
             printf("New termios structure set\n");
 
+            // Loop for input
             unsigned char byte2;
             ReceiverState ReceiverState = START_R;
             while (ReceiverState != STOP_RCV) {
@@ -311,6 +309,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
             alarmEnabled = TRUE;
             int bytesW = writeBytesSerialPort(stuffed_frame, j);
             sleep(1);
+            printf("%d bytes written\n", bytesW);
             alarm(timeout);
             //printf("%d bytes written\n", bytesW);
         }
@@ -354,6 +353,8 @@ int llwrite(const unsigned char *buf, int bufSize) {
         printf("Frame could not be delivered\n");
         return -1;
     }
+
+    return -1;
 }
 
 ////////////////////////////////////////////////
@@ -412,23 +413,11 @@ int llread(unsigned char *packet) {
                     else state = START_R;
                     break;
 
-                case DISC_RCV:
-                    printf("Disc received\n");
-                    if (byte == FLAG) {
-                        printf("Sending DISC to transmitter\n");
-                        if (closeReceiver() == 1) return FRAME_SIZE;
-                        else return -1;
-                    }
-                    else {
-                        state = START_R;
-                    }
-                    break;
-
-                case READ_DATA:
-                    if (byte == ESC) state = ESC_FOUND;
-                    else if (byte == FLAG) {
-                        unsigned char bcc2 = packet[--x];
-                        printf("BCC2 = 0x%02X\n", bcc2);
+            case READ_DATA:
+                if (byte == ESC) state = ESC_FOUND;
+                else if (byte == FLAG) {
+                    unsigned char bcc2 = packet[--x];
+                    printf("BCC2 = 0x%02X\n", bcc2);
 
                         unsigned char acc = 0;
                         for (unsigned int i = 0; i < x; i++) {
@@ -550,7 +539,7 @@ int closeReceiver() {
             int bytes = writeBytesSerialPort(supervisionFrame,5);
             sleep(1); 
             printf("%d DISC bytes written to transmitor\n", bytes);
-            alarm(timeout); // Set alarm to be triggered in 3s
+            alarm(timeout);
             
             alarmEnabled = TRUE;
         }
@@ -600,7 +589,6 @@ int closeReceiver() {
     alarm(0);
 
     if (receiverState == STOP_RCV) {
-        printf("STOP\n");
         printf("Received UA frame successfully.\n");
         return 1;
     }
