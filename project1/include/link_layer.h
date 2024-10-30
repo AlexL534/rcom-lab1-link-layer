@@ -52,6 +52,7 @@ typedef enum {
     STOP_RCV,
     READ_DATA,
     ESC_FOUND,
+    DISC_RCV,   
 } ReceiverState;
 
 typedef enum {
@@ -106,5 +107,7 @@ int llread(unsigned char *packet);
 int llclose(int showStatistics);
 
 unsigned char checkControl();
+int closeReceiver();
+unsigned char byteDestuff(unsigned char byte);
 
 #endif // _LINK_LAYER_H_

@@ -2,18 +2,134 @@
 
 #include "application_layer.h"
 
-void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename)
-{
+void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename) {
     LinkLayer linklayer;
     strcpy(linklayer.serialPort, serialPort);
     linklayer.baudRate = baudRate;
     linklayer.nRetransmissions = nTries;
     linklayer.timeout = timeout;
-    linklayer.role = strcmp(role, "tx") == 0 ? LlTx : LlRx;
+    linklayer.role = strcmp(role, "tx") ? LlRx : LlTx;
 
     if (llopen(linklayer) == -1) {
-        printf("Could not establish connection\n");
+        fprintf(stderr, "Error: Could not establish connection\n");
         exit(1);
+    }
+    switch(linklayer.role) {
+        case LlTx: 
+            File *file = fopen(filename, "rb");
+            if (file == NULL) {
+                perror("File not found\n");
+                exit(-1);
+            }
+            
+            fseek(file, 0 , SEEK_END); //move to the end of the file
+            long int fileSize = ftell(file); //get the size of the file
+            fseek(file, 0, SEEK_SET); //return to start of the file
+
+            unsigned int controlPacketSize;
+            unsigned char *controlPacket = getControlPacket(2, filename, fileSize, &controlPacketSize);
+            if (llwrite(controlPacket, controlPacketSize) == -1) {
+                fprintf(stderr, "Error: Failed to send start control packet\n");
+                free(controlPacket);
+                fclose(file);
+                exit(-1);
+            }
+            free(controlPacket);
+
+            unsigned char sequence = 0;
+            while (fileSize > 0) {
+                int dataSize = (fileSize > MAX_PAYLOAD_SIZE) ? MAX_PAYLOAD_SIZE : fileSize;
+                unsigned char *data = (unsigned char *)malloc(dataSize);
+                if (fread(data, sizeof(unsigned char), dataSize, file) != dataSize) {
+                    fprintf(stderr, "Error: Could not read file data\n");
+                    free(data);
+                    fclose(file);
+                    exit(1);
+                }
+
+                int packetSize;
+                unsigned char *dataPacket = getDataPacket(sequence, data, dataSize, &packetSize);
+                if (llwrite(dataPacket, packetSize) == -1) {
+                    fprintf(stderr, "Error: Failed to send data packet\n");
+                    free(dataPacket);
+                    free(data);
+                    fclose(file);
+                    exit(-1);
+                }
+                free(dataPacket);
+                free(data);
+                sequence = (sequence + 1) % 256;
+                fileSize -= dataSize;
+            }
+
+            unsigned char *endControlPacket = getControlPacket(3, filename, 0, &controlPacketSize);
+            if (llwrite(endControlPacket, cpSize) == -1) {
+                fprintf(stderr, "Error: Failed to send end control packet\n");                
+                free(endControlPacket);
+                fclose(file);
+                exit(-1);
+            }
+            free(endControlPacket);
+            
+            fclose(file);
+            llclose();
+            break;
+
+        case LlRx:
+            unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+            unsigned long int receivedFileSize = 0;
+
+            int packetSize = llread(packet);
+
+            if (packetSize < 0) {
+                fprintf(stderr, "Error: Failed to read start control packet\n");
+                free(packet);
+                llclose();
+                exit(1);
+            }   
+
+            unsigned char *filenameReceived = parseControlPacket(packet, packetSize, &receivedFileSize);
+            if (filenameReceived == NULL) {
+                fprintf(stderr, "Error: Could not parse start control packet\n");
+                free(packet);
+                llclose(0);
+                exit(-1);
+            }
+
+            FILE *newFile = fopen((char*)filenameReceived, "wb");
+            if (newFile == NULL) {
+                perror("Error creating file\n");
+                free(filenameReceived);
+                free(packet);
+                llclose(0);
+                exit(-1);
+            }
+            free(filenameReceived);
+
+            while (1) {
+                packetSize = llread(linklayer, packet);
+                if (packetSize < 0) {
+                    fprintf(stderr, "Error: Failed to read data packet\n");
+                    break;
+                }
+
+                if (packetSize == 0 || packet[0] == 3) break;
+
+                unsigned char *dataBuffer = (unsigned char *) malloc(packetSize - 4);
+                parseDataPacket(packet, packetSize, dataBuffer);
+                fwrite(dataBuffer, sizeof(unsigned char), packetSize - 4, newFile);
+                free(dataBuffer);
+            }
+
+            fclose(newFile);
+            free(packet);
+            llclose();
+            break;
+
+        default:
+            fprintf(stderr, "Error: Unknown role\n");
+            llclose();
+            exit(1);
     }
 }
 
