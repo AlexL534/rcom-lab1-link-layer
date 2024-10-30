@@ -151,18 +151,18 @@ int llopen(LinkLayer connectionParameters) {
                         break;
                 }
             }
-        }
-        if (senderState == STOP_SDR) {
+             if (senderState == STOP_SDR) {
             //printf("STOP\n");
             printf("Received UA frame successfully.\n");
             return 1;
-        }
+            }
 
-        else {
-            printf("No response from receiver.Canceling operation...\n");
-            return -1;
+            else {
+                printf("No response from receiver.Canceling operation...\n");
+                return -1;
+            }
+            break;
         }
-        break;
 
         case LlRx: {
             printf("New termios structure set\n");
@@ -181,8 +181,7 @@ int llopen(LinkLayer connectionParameters) {
                         case FLAG_RCV:
                             //printf("flag\n");
                             if (byte2 == ADDRESS_SENT_TRANSMITTER)ReceiverState = A_RCV;
-                            else if (byte2 == FLAG) ReceiverState = FLAG_RCV;
-                            else ReceiverState = START_R;
+                            else if (byte2 == !FLAG) ReceiverState = START_R;
                             break;
                         case A_RCV:
                             //printf("A\n");
@@ -196,7 +195,7 @@ int llopen(LinkLayer connectionParameters) {
                             if (byte2 == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
                                 ReceiverState = BCC_OK_R;
                             }
-                            else if (byte2 == CONTROL_SET) ReceiverState = FLAG_RCV;
+                            else if (byte2 == FLAG) ReceiverState = FLAG_RCV; 
                             else ReceiverState = START_R;
                             break;
                         case BCC_OK_R:
