@@ -331,7 +331,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
             break;
         }
         else if (rejected) {
-            current_transmission++;
+            //current_transmission++;
             //stuffed_frame[j-2] = 0x07; //                                   PARA TESTE
             int bytesW = writeBytesSerialPort(stuffed_frame, j);
             //printf("%d bytes rewritten\n", bytesW);
