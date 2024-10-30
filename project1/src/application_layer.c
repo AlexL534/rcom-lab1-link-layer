@@ -16,7 +16,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     }
     switch(linklayer.role) {
         case LlTx: 
-            File *file = fopen(filename, "rb");
+            FILE *file = fopen(filename, "rb");
             if (file == NULL) {
                 perror("File not found\n");
                 exit(-1);
@@ -63,7 +63,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             }
 
             unsigned char *endControlPacket = getControlPacket(3, filename, 0, &controlPacketSize);
-            if (llwrite(endControlPacket, cpSize) == -1) {
+            if (llwrite(endControlPacket, controlPacketSize) == -1) {
                 fprintf(stderr, "Error: Failed to send end control packet\n");                
                 free(endControlPacket);
                 fclose(file);
@@ -72,7 +72,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             free(endControlPacket);
             
             fclose(file);
-            llclose();
+            llclose(0);
             break;
 
         case LlRx:
@@ -84,7 +84,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             if (packetSize < 0) {
                 fprintf(stderr, "Error: Failed to read start control packet\n");
                 free(packet);
-                llclose();
+                llclose(0);
                 exit(1);
             }   
 
@@ -107,7 +107,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             free(filenameReceived);
 
             while (1) {
-                packetSize = llread(linklayer, packet);
+                packetSize = llread(packet);
                 if (packetSize < 0) {
                     fprintf(stderr, "Error: Failed to read data packet\n");
                     break;
@@ -123,12 +123,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
             fclose(newFile);
             free(packet);
-            llclose();
+            llclose(0);
             break;
 
         default:
             fprintf(stderr, "Error: Unknown role\n");
-            llclose();
+            llclose(0);
             exit(1);
     }
 }
