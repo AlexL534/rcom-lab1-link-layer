@@ -108,7 +108,7 @@ int llopen(LinkLayer connectionParameters) {
                         perror("Failed to write bytes to serial port");
                         return -1;
                     }
-                    sleep(1); 
+                    sleep(1); //important
                     printf("%d bytes written\n", bytes);
                     alarm(timeout);
                     
@@ -310,7 +310,6 @@ int llwrite(const unsigned char *buf, int bufSize) {
             if (current_transmission > retransmissions + 1) break;
             alarmEnabled = TRUE;
             int bytesW = writeBytesSerialPort(stuffed_frame, j);
-            sleep(1);
             alarm(timeout);
             //printf("%d bytes written\n", bytesW);
         }
@@ -337,7 +336,6 @@ int llwrite(const unsigned char *buf, int bufSize) {
             current_transmission++;
             //stuffed_frame[j-2] = 0x07; //                                   PARA TESTE
             int bytesW = writeBytesSerialPort(stuffed_frame, j);
-            sleep(1);
             //printf("%d bytes rewritten\n", bytesW);
         }
     }
@@ -403,7 +401,6 @@ int llread(unsigned char *packet) {
                             */
                             
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                            sleep(1);
                             printf("%d Duplicate frame, positive response bytes written\n", bytesW);
                             return 0;
                         }
@@ -451,7 +448,6 @@ int llread(unsigned char *packet) {
                             */
 
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                            sleep(1);
                             printf("%d positive response bytes written\n", bytesW);
                             frameNumberR = (frameNumberR + 1) % 2;
                             //printf("\nFrame number = 0x%02X\n", frameNumberR);      //TESTE
@@ -471,7 +467,6 @@ int llread(unsigned char *packet) {
                                 */
 
                                 int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                                sleep(1);
                                 printf("%d Error in data but duplicate frame, positive response bytes written\n", bytesW);
                                 return 0;
                             }
@@ -480,7 +475,6 @@ int llread(unsigned char *packet) {
                                 unsigned char cResponse = frameNumberR == 0 ? REJ0 : REJ1;
                                 unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse};
                                 int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                                sleep(1);
                                 printf("%d negative response bytes written\n", bytesW);
                                 state = START_R;
                                 x = 0;
@@ -548,7 +542,6 @@ int closeReceiver() {
 
         if (alarmEnabled == FALSE) {
             int bytes = writeBytesSerialPort(supervisionFrame,5);
-            sleep(1); 
             printf("%d DISC bytes written to transmitor\n", bytes);
             alarm(timeout); // Set alarm to be triggered in 3s
             
@@ -637,7 +630,6 @@ int llclose(int showStatistics)
             if (alarmEnabled == FALSE)
             {
                 int bytes = writeBytesSerialPort(bufS,5);
-                sleep(1);
                 printf("%d bytes written\n", bytes);
                 alarm(timeout);
                 
@@ -727,7 +719,6 @@ int llclose(int showStatistics)
             printf("Read DISC frame successfully.\n");
             unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_TRANSMITTER, CONTROL_UA, ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA, FLAG};
             writeBytesSerialPort(uaFrame, 5);
-            sleep(1);
             printf("Sent UA frame\n");
         }
 
