@@ -15,6 +15,77 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         printf("Could not establish connection\n");
         exit(1);
     }
+    
+    switch (linklayer.role) {
+    case LlTx:
+        unsigned char buf[3] = {0x01, 0x02, 0x04}; //0x07        0x7e, 0x02, 0x7d, 0x7c/0x7f
+
+        if (llwrite(buf, 3) == -1) {
+            printf("Error while sending data to receiver\n");
+            exit(2);
+        }
+
+        /*
+        buf[0] = 0x7e;
+        buf[2] = 0x7d;
+
+        if (llwrite(buf, 3) == -1) {
+            printf("Error while sending data to receiver\n");
+            exit(2);
+        }*/
+
+        if (llclose(0) == -1) {
+            printf("Error on closing connection\n");
+            exit(4);
+        }
+
+        break;
+    
+    case LlRx:
+        unsigned char packet[3];
+        int result = llread(packet);
+        printf("result = %d\n", result);
+        if (result == -1) {
+            printf("Error while reading data from transmitor\n");
+            exit(3);
+        }
+
+        printf("Packet received:\n");
+        for (int i = 0; i < 3; i++) {
+            printf("0x%02X ", packet[i]);
+        }
+        printf("\n");
+
+        /*
+        packet[0] = 0x00;
+        packet[1] = 0x00;
+        packet[2] = 0x00;
+
+        result = llread(packet);
+        printf("result = %d\n", result);
+        if (result == -1) {
+            printf("Error while reading data from transmitor\n");
+            exit(3);
+        }
+
+        printf("Packet received:\n");
+        for (int i = 0; i < 3; i++) {
+            printf("0x%02X ", packet[i]);
+        }
+        printf("\n");*/
+
+        result = llread(packet);
+        printf("result = %d\n", result);
+        if (result == -1) {
+            printf("Error while disconnecting from transmitor\n");
+            exit(3);
+        }
+
+        break;
+    
+    default:
+        break;
+    }
 }
 
 unsigned char* parseControlPacket(unsigned char* packet, int size, unsigned long int *fileSize) {
