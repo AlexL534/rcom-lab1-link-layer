@@ -64,8 +64,7 @@ typedef enum {
     STOP_SDR,
 } SenderState;
 
-typedef enum
-{
+typedef enum {
     LlTx,
     LlRx,
 } LinkLayerRole;

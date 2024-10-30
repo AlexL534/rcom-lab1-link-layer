@@ -1,6 +1,7 @@
 // Application layer protocol implementation
 
 #include "application_layer.h"
+#include <stdio.h>
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate, int nTries, int timeout, const char *filename) {
     LinkLayer linklayer;
@@ -266,14 +267,14 @@ unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int d
     return packet;
 }
 
-unsigned char *getData(FILE* fd, long int fileLength) {
+unsigned char *getData(FILE* spfd, long int fileLength) {
     unsigned char *data = (unsigned char *)malloc(fileLength);
     if (!data) {
         perror("Memory allocation failed");
         return NULL;
     }
 
-    size_t bytesRead = fread(data, 1, fileLength, fd);
+    size_t bytesRead = fread(data, 1, fileLength, spfd);
     if (bytesRead != fileLength) {
         perror("File reading failed");
         free(data);

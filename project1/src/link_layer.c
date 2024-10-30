@@ -1,6 +1,10 @@
 // Link layer protocol implementation
 
 #include "link_layer.h"
+#include "serial_port.h"
+
+// MISC
+#define _POSIX_SOURCE 1 // POSIX compliant source
 
 volatile int STOP = FALSE;
 
@@ -77,8 +81,9 @@ unsigned char checkControl() {
 // LLOPEN
 ////////////////////////////////////////////////
 int llopen(LinkLayer connectionParameters) {
-    int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);
-    if (fd < 0) return -1;
+
+    int spfd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);
+    if (spfd < 0) return -1;
 
     retransmissions = connectionParameters.nRetransmissions;
     timeout = connectionParameters.timeout;
@@ -230,7 +235,7 @@ int llopen(LinkLayer connectionParameters) {
         default:
             break;
     }
-    return fd;
+    return spfd;
 }
 
 ////////////////////////////////////////////////
