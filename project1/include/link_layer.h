@@ -24,6 +24,7 @@
 #define TRUE 1
 
 #define BUF_SIZE 256
+#define FRAME_SIZE 5
 
 #define FLAG 0x7E
 #define ADDRESS_SENT_TRANSMITTER 0x03
@@ -51,7 +52,7 @@ typedef enum {
     STOP_RCV,
     READ_DATA,
     ESC_FOUND,
-    DISC_RCV,
+    DISC_RCV,   
 } ReceiverState;
 
 typedef enum {
