@@ -139,7 +139,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             fprintf(stderr, "Error: Unknown role\n");
             llclose(0);
             exit(1);
-            break;
+        break;
     }
 }
 

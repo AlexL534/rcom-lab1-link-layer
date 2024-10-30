@@ -212,8 +212,6 @@ int llopen(LinkLayer connectionParameters) {
                             if (byte2 == FLAG) ReceiverState = STOP_RCV;
                             else ReceiverState = START_R;
                             break;
-                        case STOP_RCV:
-                            break;
                         default:
                             ReceiverState = START_R;
                             break;
@@ -295,14 +293,6 @@ int llwrite(const unsigned char *buf, int bufSize) {
     //return -1; //                           PARA TESTE 
     */
     
-    printf("After Stuff I frame:\n");
-    for (int i = 0; i < j; i++) {
-        printf("0x%02X ", stuffed_frame[i]);
-    }
-    printf("\n");
-
-    //return -1; //                           PARA TESTE
-
     inf_frame_size = j;
 
     int current_transmission = 0;
@@ -329,7 +319,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
         //printf("command = 0x%02X\n", command); //              TESTAR COMMAND
 
 
-        if ((command == REJ0 && frameNumberT == 0) || (command == REJ1 && frameNumberT == 1)) {
+        if (command == REJ0 || command == REJ1) {
             rejected = 1;
         }
 
