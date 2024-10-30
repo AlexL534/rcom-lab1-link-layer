@@ -71,11 +71,13 @@ unsigned char checkControl() {
 ////////////////////////////////////////////////
 // LLOPEN
 ////////////////////////////////////////////////
-int llopen(LinkLayer connectionParameters)
-{
+int llopen(LinkLayer connectionParameters) {
     int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);
-    if (fd < 0) return -1;
-
+    if (fd < 0) {
+        perror("Failed to open serial port");
+        return -1;
+    }
+    
     retransmissions = connectionParameters.nRetransmissions;
     timeout = connectionParameters.timeout;
 
@@ -99,7 +101,7 @@ int llopen(LinkLayer connectionParameters)
                     int bytes = writeBytesSerialPort(bufS,5);
                     sleep(1); 
                     printf("%d bytes written\n", bytes);
-                    alarm(3); // Set alarm to be triggered in 3s
+                    alarm(timeout); // Set alarm to be triggered in 3s
                     
                     alarmEnabled = TRUE;
                 }
@@ -109,7 +111,7 @@ int llopen(LinkLayer connectionParameters)
                 if (readByteSerialPort(&response_byte)) {
                     switch(senderState) {
                         case START_S:
-                            printf("start\n");
+                            //printf("start\n");
                             if (response_byte == FLAG) {
                                 senderState = FLAG_SDR;
                             }
@@ -118,7 +120,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case FLAG_SDR:
-                            printf("flag\n");
+                            //printf("flag\n");
                             if (response_byte == ADDRESS_ANSWER_RECEIVER) {
                             
                                 senderState = A_SDR;
@@ -132,7 +134,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case A_SDR:
-                            printf("A\n");
+                            //printf("A\n");
                             if (response_byte == CONTROL_UA) {
                                 senderState = C_SDR;
                             }
@@ -145,7 +147,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case C_SDR:
-                            printf("C\n");
+                            //printf("C\n");
                             if (response_byte == (ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA)) {
                                 senderState = BCC_OK_S;
                             }
@@ -159,7 +161,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case BCC_OK_S:
-                            printf("BCC\n");
+                            //printf("BCC\n");
                             if (response_byte == FLAG) {
                                 
                                 senderState = STOP_SDR;
@@ -177,7 +179,7 @@ int llopen(LinkLayer connectionParameters)
                 }
             }
             if (senderState == STOP_SDR) {
-                printf("STOP\n");
+                //printf("STOP\n");
                 printf("Received UA frame successfully.\n");
                 return 1;
             }
@@ -201,7 +203,7 @@ int llopen(LinkLayer connectionParameters)
                     //printf(":%s:%d\n", buf, bytes); //prints frame received
                     switch(ReceiverState) {
                         case START_R:
-                        printf("start\n");
+                        //printf("start\n");
                             if (byte2 == FLAG) {
                                 ReceiverState = FLAG_RCV;
                             }
@@ -210,7 +212,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case FLAG_RCV:
-                            printf("flag\n");
+                            //printf("flag\n");
                             if (byte2 == ADDRESS_SENT_TRANSMITTER) {
                             
                                 ReceiverState = A_RCV;
@@ -224,7 +226,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case A_RCV:
-                            printf("A\n");
+                            //printf("A\n");
                             if (byte2 == CONTROL_SET) {
                                 ReceiverState = C_RCV;
                             }
@@ -237,7 +239,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case C_RCV:
-                            printf("C\n");
+                            //printf("C\n");
                             if (byte2 == (ADDRESS_SENT_TRANSMITTER ^ CONTROL_SET)) {
                                 ReceiverState = BCC_OK_R;
                             }
@@ -251,7 +253,7 @@ int llopen(LinkLayer connectionParameters)
                             }
                             break;
                         case BCC_OK_R:
-                            printf("BCC\n");
+                            //printf("BCC\n");
                             if (byte2 == FLAG) {
                                 
                                 ReceiverState = STOP_RCV;
@@ -267,7 +269,7 @@ int llopen(LinkLayer connectionParameters)
                     }
                 }
             }
-            printf("STOP\n");
+            //printf("STOP\n");
             unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_RECEIVER, CONTROL_UA, ADDRESS_ANSWER_RECEIVER ^ CONTROL_UA, FLAG};
             writeBytesSerialPort(uaFrame, 5);
             printf("Sent UA frame\n");
@@ -278,7 +280,7 @@ int llopen(LinkLayer connectionParameters)
         default:
             break;
     }
-return -1;
+    return fd;
 }
 
 ////////////////////////////////////////////////
@@ -415,7 +417,7 @@ int llread(unsigned char *packet)
                         int bytes = writeBytesSerialPort(supervisionFrame,5);
                         sleep(1); 
                         printf("%d bytes written\n", bytes);
-                        alarm(3); // Set alarm to be triggered in 3s
+                        alarm(timeout); // Set alarm to be triggered in 3s
                         
                         alarmEnabled = TRUE;
                     }
@@ -427,7 +429,7 @@ int llread(unsigned char *packet)
                         if (readByteSerialPort(&response_byte)) {
                             switch(receiverState) {
                                 case START_R:
-                                    printf("start\n");
+                                    //printf("start\n");
                                     if (response_byte == FLAG) {
                                         receiverState = FLAG_RCV;
                                     }
@@ -436,7 +438,7 @@ int llread(unsigned char *packet)
                                     }
                                     break;
                                 case FLAG_RCV:
-                                    printf("flag\n");
+                                    //printf("flag\n");
                                     if (response_byte == ADDRESS_ANSWER_TRANSMITTER) {
                                     
                                         receiverState = A_RCV;
@@ -450,7 +452,7 @@ int llread(unsigned char *packet)
                                     }
                                     break;
                                 case A_RCV:
-                                    printf("A\n");
+                                    //printf("A\n");
                                     if (response_byte == CONTROL_UA) {
                                         receiverState = C_RCV;
                                     }
@@ -463,7 +465,7 @@ int llread(unsigned char *packet)
                                     }
                                     break;
                                 case C_RCV:
-                                    printf("C\n");
+                                    //printf("C\n");
                                     if (response_byte == (ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA)) {
                                         receiverState = BCC_OK_R;
                                     }
@@ -477,7 +479,7 @@ int llread(unsigned char *packet)
                                     }
                                     break;
                                 case BCC_OK_R:
-                                    printf("BCC\n");
+                                    //printf("BCC\n");
                                     if (response_byte == FLAG) {
                                         
                                         receiverState = STOP_RCV;
@@ -489,7 +491,7 @@ int llread(unsigned char *packet)
                                     break;
                                 case STOP_RCV:
                                     STOP = TRUE;
-                                    printf("STOP\n");
+                                    //printf("STOP\n");
                                     printf("Received UA frame successfully.\n");
                                     alarm(0);
                                     break;
@@ -583,7 +585,7 @@ int llclose(int showStatistics)
             int bytes = writeBytesSerialPort(bufS,5);
             sleep(1); 
             printf("%d bytes written\n", bytes);
-            alarm(3); // Set alarm to be triggered in 3s
+            alarm(timeout); // Set alarm to be triggered in 3s
             
             alarmEnabled = TRUE;
         }
@@ -593,7 +595,7 @@ int llclose(int showStatistics)
         if (response_byte > 0) {
             switch(senderState) {
                 case START_S:
-                    printf("start\n");
+                    //printf("start\n");
                     if (response_byte == FLAG) {
                         senderState = FLAG_SDR;
                     }
@@ -602,7 +604,7 @@ int llclose(int showStatistics)
                     }
                     break;
                 case FLAG_SDR:
-                    printf("flag\n");
+                    //printf("flag\n");
                     if (response_byte == ADDRESS_SENT_RECEIVER) {
                     
                         senderState = A_SDR;
@@ -616,7 +618,7 @@ int llclose(int showStatistics)
                     }
                     break;
                 case A_SDR:
-                    printf("A\n");
+                    //printf("A\n");
                     if (response_byte == DISC) {
                         senderState = C_SDR;
                     }
@@ -629,7 +631,7 @@ int llclose(int showStatistics)
                     }
                     break;
                 case C_SDR:
-                    printf("C\n");
+                    //printf("C\n");
                     if (response_byte == (ADDRESS_SENT_RECEIVER ^ DISC)) {
                         senderState = BCC_OK_S;
                     }
@@ -643,7 +645,7 @@ int llclose(int showStatistics)
                     }
                     break;
                 case BCC_OK_S:
-                    printf("BCC\n");
+                    //printf("BCC\n");
                     if (response_byte == FLAG) {
                         
                         senderState = STOP_SDR;
@@ -654,7 +656,7 @@ int llclose(int showStatistics)
                     }
                     break;
                 case STOP_SDR:
-                    printf("STOP\n");
+                    //printf("STOP\n");
                     printf("Read DISC frame successfully.\n");
                     break;
                 default:
