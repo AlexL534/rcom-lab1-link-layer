@@ -53,29 +53,33 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 int packetSize;
                 unsigned char* packet = getDataPacket(sequence, data, dataSize, &packetSize);
 
-                if(llwrite(packet, packetSize) == -1) {
-                    fprintf(stderr, "Exit: error in data packets\n");
-                    exit(-1);
-                }
-                
-                bytesLeft -= (long int) MAX_PAYLOAD_SIZE; 
-
-                content += dataSize; 
-
-                printf("Debug: Successfully read %zu bytes from file\n", bytesLeft);
-
-                unsigned char *dataPacket = getDataPacket(sequence, data, dataSize, &packetSize);
-                if (llwrite(dataPacket, packetSize) == -1) {
-                    fprintf(stderr, "Error: Failed to send data packet\n");
-                    free(dataPacket);
+                if (dataSize > MAX_PAYLOAD_SIZE) {
+                    fprintf(stderr, "Error: Payload size exceeded maximum limit\n");
+                    free(packet);
                     free(data);
                     fclose(file);
                     exit(-1);
                 }
-                free(dataPacket);
+
+                if (llwrite(packet, packetSize) == -1) {
+                    fprintf(stderr, "Error: Failed to send data packet\n");
+                    free(packet);
+                    free(data);
+                    fclose(file);
+                    exit(-1);
+                }
+                
+                bytesLeft -= dataSize; 
+
+                content += dataSize; 
+
+                printf("Debug: Payload size sent = %d bytes, Frame size (with headers) = %d bytes, remaining file size = %ld bytes\n", dataSize, packetSize, bytesLeft);                
+                // Clean up
+                free(packet);
                 free(data);
+
+                // Update the sequence number
                 sequence = (sequence + 1) % 256;
-                bytesLeft -= dataSize;
 
                 printf("Debug: Remaining file size = %ld bytes\n", bytesLeft);
             }
@@ -113,15 +117,13 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 exit(-1);
             }
 
-            FILE *newFile = fopen((char*)filenameReceived, "wb+");
+            FILE *newFile = fopen((char*)filename, "wb+");
             if (newFile == NULL) {
                 perror("Error creating file\n");
-                free(filenameReceived);
                 free(packet);
                 llclose(0);
                 exit(-1);
             }
-            free(filenameReceived);
 
             while (1) {    
                 while ((packetSize = llread(packet)) < 0);

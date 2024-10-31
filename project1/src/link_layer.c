@@ -401,7 +401,7 @@ int llread(unsigned char *packet) {
                         unsigned char acc = 0;
                         for (unsigned int i = 0; i < x; i++) {
                             acc ^= packet[i];
-                            printf("0x%02X ", packet[i]); // Debugging: packet content
+                            //printf("0x%02X ", packet[i]); // Debugging: packet content
                         }
 
                         printf("\nACC2 = 0x%02X\n", acc);
