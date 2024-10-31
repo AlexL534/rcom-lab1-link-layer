@@ -16,14 +16,21 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         exit(1);
     }
 
+    FILE *file;
+
+    unsigned char *packet;
+    unsigned long int receivedFileSize = 0;
+    int packetSize;
+
+    
     switch(linklayer.role) {
         case LlTx: 
-            FILE *file = fopen(filename, "rb");
+            file = fopen(filename, "rb");
             if (file == NULL) {
                 perror("Error opening file\n");
                 exit(-1);
             }
-            
+
             int prev = ftell(file);
             fseek(file,0L,SEEK_END);
             long int fileSize = ftell(file)-prev;
@@ -97,10 +104,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             break;
 
         case LlRx:
-            unsigned char *packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
-            unsigned long int receivedFileSize = 0;
-
-            int packetSize = llread(packet);
+            packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+            receivedFileSize = 0;
+            packetSize = llread(packet);
 
             if (packetSize < 0) {
                 fprintf(stderr, "Error: Failed to read start control packet\n");
