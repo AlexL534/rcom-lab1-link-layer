@@ -15,11 +15,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
         fprintf(stderr, "Error: Could not establish connection\n");
         exit(1);
     }
+
     switch(linklayer.role) {
         case LlTx: 
             FILE *file = fopen(filename, "rb");
-            if (file == NULL) {
-                perror("File not found\n");
+            if (!file) {
+                perror("Error opening file\n");
                 exit(-1);
             }
             
@@ -40,22 +41,38 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             free(controlPacket);
 
             unsigned char sequence = 0;
-            while (fileSize > 0) {
+            unsigned char* content = getData(file, fileSize);
+            long int bytesLeft = fileSize;
+
+            while (bytesLeft > 0) {
                 int dataSize = (fileSize > MAX_PAYLOAD_SIZE) ? MAX_PAYLOAD_SIZE : fileSize;
                 unsigned char *data = (unsigned char *)malloc(dataSize);
-                if (data == NULL) {
+                
+                if (!data) {
                     fprintf(stderr, "Error: Memory allocation failed\n");
                     fclose(file);
                     exit(1);
                 }
+                
+                memcpy(data, content + (fileSize - bytesLeft), dataSize);
+
+                printf("Debug: Attempting to read %d bytes from file...\n", dataSize);
 
                 size_t bytesRead = fread(data, sizeof(unsigned char), dataSize, file);
+
                 if (bytesRead != dataSize) {
                     fprintf(stderr, "Error: Could not read file data, bytes read: %zu, expected: %d\n", bytesRead, dataSize);
+                    if (feof(file)) {
+                        printf("Debug: Reached end of file\n");
+                    } else if (ferror(file)) {
+                        printf("Debug: An error occurred while reading the file\n");
+                    }
                     free(data);
                     fclose(file);
                     exit(1);
                 }
+
+                printf("Debug: Successfully read %zu bytes from file\n", bytesRead);
 
                 int packetSize;
                 unsigned char *dataPacket = getDataPacket(sequence, data, dataSize, &packetSize);
@@ -69,7 +86,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 free(dataPacket);
                 free(data);
                 sequence = (sequence + 1) % 256;
-                fileSize -= dataSize;
+                bytesLeft -= dataSize;
+
+                printf("Debug: Remaining file size = %ld bytes\n", fileSize);
             }
 
             unsigned char *endControlPacket = getControlPacket(3, filename, 0, &controlPacketSize);
@@ -257,7 +276,7 @@ unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int d
 
     int index = 0;
 
-    packet[index++] == 2;
+    packet[index++] = 2;
     packet[index++] = sequence;
     packet[index++] = (dataSize >> 8) & 0xFF;
     packet[index++] = dataSize & 0xFF;
@@ -275,6 +294,7 @@ unsigned char *getData(FILE* spfd, long int fileLength) {
     }
 
     size_t bytesRead = fread(data, 1, fileLength, spfd);
+
     if (bytesRead != fileLength) {
         perror("File reading failed");
         free(data);

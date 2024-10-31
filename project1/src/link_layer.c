@@ -245,6 +245,11 @@ int llwrite(const unsigned char *buf, int bufSize) {
     int inf_frame_size = 6 + bufSize;
     unsigned char *stuffed_frame = (unsigned char *)malloc(2 * inf_frame_size);
 
+    if (stuffed_frame == NULL) {
+        perror("Memory allocation failed");
+        return -1;
+    }   
+
     stuffed_frame[0] = FLAG;
     stuffed_frame[1] = ADDRESS_SENT_TRANSMITTER;
     stuffed_frame[2] = C_N(frameNumberT);
@@ -255,20 +260,17 @@ int llwrite(const unsigned char *buf, int bufSize) {
         BCC2 ^= buf[i]; // doing XOR of each byte with BCC2
     }
 
-    //BCC2 = 0x06;                                // TESTAR
-    //printf("BCC2 = 0x%02X\n", BCC2);            // PARA TESTAR BCC
+    printf("BCC2 = 0x%02X\n", BCC2); // Debugging BCC2 value
 
     int j = 4;
     for (int i = 0; i < bufSize; i++) {
         if (buf[i] == FLAG) {
             stuffed_frame[j++] = ESC;
             stuffed_frame[j++] = FLAG ^ 0X20;
-        }
-        else if (buf[i] == ESC) {
+        } else if (buf[i] == ESC) {
             stuffed_frame[j++] = ESC;
             stuffed_frame[j++] = ESC ^ 0x20;
-        }
-        else {
+        } else {
             stuffed_frame[j++] = buf[i];
         }
     }
@@ -276,26 +278,15 @@ int llwrite(const unsigned char *buf, int bufSize) {
     if (BCC2 == FLAG) {
         stuffed_frame[j++] = ESC;
         stuffed_frame[j++] = FLAG ^ 0x20;
-    } 
-    else if (BCC2 == ESC) {
+    } else if (BCC2 == ESC) {
         stuffed_frame[j++] = ESC;
         stuffed_frame[j++] = ESC ^ 0x20;
-    } 
-    else {
+    } else {
         stuffed_frame[j++] = BCC2;
     }
 
     stuffed_frame[j++] = FLAG;
 
-    /*
-    printf("After Stuff I frame:\n");
-    for (int i = 0; i < j; i++) {
-        printf("0x%02X ", stuffed_frame[i]);
-    }
-    printf("\n");
-    //return -1; //                           PARA TESTE 
-    */
-    
     inf_frame_size = j;
 
     int current_transmission = 0;
@@ -313,33 +304,31 @@ int llwrite(const unsigned char *buf, int bufSize) {
             if (current_transmission > retransmissions + 1) break;
             alarmEnabled = TRUE;
             int bytesW = writeBytesSerialPort(stuffed_frame, j);
+            if (bytesW < 0) {
+                perror("Failed to write bytes to serial port");
+                return -1; // Handle error
+            }
             alarm(timeout);
-            //printf("%d bytes written\n", bytesW);
+            printf("%d bytes written\n", bytesW); // Debugging: bytes written to serial port
         }
 
         unsigned char command = checkControl();
-        //printf("command = 0x%02X\n", command); //              TESTAR COMMAND
-
+        printf("command = 0x%02X\n", command); // Debugging: command received
 
         if (command == REJ0 || command == REJ1) {
             rejected = 1;
-        }
-
-        else if ((command == RR0 && frameNumberT == 1) || (command == RR1 && frameNumberT == 0)) {
+        } else if ((command == RR0 && frameNumberT == 1) || (command == RR1 && frameNumberT == 0)) {
             accepted = 1;
             frameNumberT = (frameNumberT + 1) % 2;
-            //printf("\nFrame number = 0x%02X\n", frameNumberT); //        PARA TESTE
+            printf("Frame number = 0x%02X\n", frameNumberT); // Debugging: frame number
         }
 
         if (accepted) {
             alarm(0);
             break;
-        }
-        else if (rejected) {
-            //current_transmission++;
-            //stuffed_frame[j-2] = 0x07; //                                   PARA TESTE
+        } else if (rejected) {
             int bytesW = writeBytesSerialPort(stuffed_frame, j);
-            //printf("%d bytes rewritten\n", bytesW);
+            printf("%d bytes rewritten\n", bytesW); // Debugging: bytes rewritten on rejection
         }
     }
 
@@ -348,10 +337,8 @@ int llwrite(const unsigned char *buf, int bufSize) {
     free(stuffed_frame);
     if (accepted) {
         printf("Frame delivered with success\n");
-        //printf("Frame Size = %d\n", inf_frame_size); //             PARA TESTE
         return inf_frame_size;
-    }
-    else {
+    } else {
         printf("Frame could not be delivered\n");
         return -1;
     }
@@ -385,11 +372,10 @@ int llread(unsigned char *packet) {
                     if (byte == C_N(0) || byte == C_N(1)) {
                         state = C_RCV;
                         c = byte;
-                    }
-                    else if (byte == FLAG) state = FLAG_RCV;
+                    } else if (byte == FLAG) state = FLAG_RCV;
                     else state = START_R;
                     break;
-                
+
                 case C_RCV:
                     if (byte == (ADDRESS_SENT_TRANSMITTER ^ c)) {
                         state = READ_DATA;
@@ -397,33 +383,25 @@ int llread(unsigned char *packet) {
                             state = STOP_RCV;
                             unsigned char cResponse = frameNumberR == 0 ? RR0 : RR1;
                             unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
-                            
-                            /*
-                            for (int i = 0; i < FRAME_SIZE; i++) {
-                                printf("0x%02X ", supervisionFrame[i]);
-                            }
-                            printf("\nFrame number = 0x%02X\n", frameNumberR);      //TESTE
-                            */
-                            
+
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
                             printf("%d Duplicate frame, positive response bytes written\n", bytesW);
                             return 0;
                         }
-                    }
-                    else if (byte == FLAG) state = FLAG_RCV;
+                    } else if (byte == FLAG) state = FLAG_RCV;
                     else state = START_R;
                     break;
 
-            case READ_DATA:
-                if (byte == ESC) state = ESC_FOUND;
-                else if (byte == FLAG) {
-                    unsigned char bcc2 = packet[--x];
-                    printf("BCC2 = 0x%02X\n", bcc2);
+                case READ_DATA:
+                    if (byte == ESC) state = ESC_FOUND;
+                    else if (byte == FLAG) {
+                        unsigned char bcc2 = packet[--x];
+                        printf("BCC2 = 0x%02X\n", bcc2);
 
                         unsigned char acc = 0;
                         for (unsigned int i = 0; i < x; i++) {
                             acc ^= packet[i];
-                            printf("0x%02X ", packet[i]);
+                            printf("0x%02X ", packet[i]); // Debugging: packet content
                         }
 
                         printf("\nACC2 = 0x%02X\n", acc);
@@ -432,38 +410,21 @@ int llread(unsigned char *packet) {
                             state = STOP_RCV;
                             unsigned char cResponse = frameNumberR == 0 ? RR1 : RR0;
                             unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
-                            
-                            /*
-                            for (int i = 0; i < FRAME_SIZE; i++) {
-                                printf("0x%02X ", supervisionFrame[i]);
-                            }
-                            printf("\nFrame number = 0x%02X\n", frameNumberR);      //TESTE
-                            */
 
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
                             printf("%d positive response bytes written\n", bytesW);
                             frameNumberR = (frameNumberR + 1) % 2;
-                            //printf("\nFrame number = 0x%02X\n", frameNumberR);      //TESTE
                             return x;
-                        }
-                        else {
+                        } else {
                             if ((c == C_N(0) && frameNumberR == 1) || (c == C_N(1) && frameNumberR == 0)) {
                                 state = STOP_RCV;
                                 unsigned char cResponse = frameNumberR == 0 ? RR0 : RR1;
                                 unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
-                                
-                                /*
-                                for (int i = 0; i < FRAME_SIZE; i++) {
-                                    printf("0x%02X ", supervisionFrame[i]);
-                                }
-                                printf("\nFrame number = 0x%02X\n", frameNumberR);      //TESTE
-                                */
 
                                 int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
                                 printf("%d Error in data but duplicate frame, positive response bytes written\n", bytesW);
                                 return 0;
-                            }
-                            else {
+                            } else {
                                 printf("Error in data, asking for retransmission\n");
                                 unsigned char cResponse = frameNumberR == 0 ? REJ0 : REJ1;
                                 unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse};
@@ -473,22 +434,12 @@ int llread(unsigned char *packet) {
                                 x = 0;
                             }
                         }
-                    }
-                    else {
+                    } else {
                         packet[x++] = byte;
                     }
                     break;
 
                 case ESC_FOUND:
-                    /*if (byte == (FLAG ^ 0x20)) {
-                        packet[x++] = FLAG;
-                    }
-                    else if (byte == (ESC ^ 0x20)) {
-                        packet[x++] = ESC;
-                    }*/
-                    /*else {
-                        state = START_R;
-                    }*/
                     packet[x++] = byteDestuff(byte);
                     state = READ_DATA;
                     break;
@@ -497,7 +448,7 @@ int llread(unsigned char *packet) {
                     break;            
 
                 default:
-                state = START_R;
+                    state = START_R;
                     break;
             }
         }
