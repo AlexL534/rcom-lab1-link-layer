@@ -19,14 +19,15 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
     switch(linklayer.role) {
         case LlTx: 
             FILE *file = fopen(filename, "rb");
-            if (!file) {
+            if (file == NULL) {
                 perror("Error opening file\n");
                 exit(-1);
             }
             
-            fseek(file, 0 , SEEK_END); //move to the end of the file
-            long int fileSize = ftell(file); //get the size of the file
-            fseek(file, 0, SEEK_SET); //return to start of the file
+            int prev = ftell(file);
+            fseek(file,0L,SEEK_END);
+            long int fileSize = ftell(file)-prev;
+            fseek(file,prev,SEEK_SET);
             printf("Debug: File size = %ld bytes\n", fileSize); //debug
 
 
@@ -45,23 +46,24 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             long int bytesLeft = fileSize;
 
             while (bytesLeft > 0) {
-                int dataSize = (fileSize > MAX_PAYLOAD_SIZE) ? MAX_PAYLOAD_SIZE : fileSize;
+                int dataSize = (bytesLeft > MAX_PAYLOAD_SIZE) ? MAX_PAYLOAD_SIZE : bytesLeft;
                 unsigned char *data = (unsigned char *)malloc(dataSize);
-                
-                if (!data) {
-                    fprintf(stderr, "Error: Memory allocation failed\n");
-                    fclose(file);
-                    exit(1);
+
+                memcpy(data, content, dataSize);
+                int packetSize;
+                unsigned char* packet = getDataPacket(sequence, data, dataSize, &packetSize);
+
+                if(llwrite(packet, packetSize) == -1) {
+                    fprintf(stderr, "Exit: error in data packets\n");
+                    exit(-1);
                 }
                 
-                memcpy(data, content + (fileSize - bytesLeft), dataSize);
+                bytesLeft -= (long int) MAX_PAYLOAD_SIZE; 
 
-                printf("Debug: Attempting to read %d bytes from file...\n", dataSize);
+                content += dataSize; 
 
-                size_t bytesRead = fread(data, sizeof(unsigned char), dataSize, file);
-
-                if (bytesRead != dataSize) {
-                    fprintf(stderr, "Error: Could not read file data, bytes read: %zu, expected: %d\n", bytesRead, dataSize);
+                if (bytesLeft != dataSize) {
+                    fprintf(stderr, "Error: Could not read file data, bytes read: %zu, expected: %d\n", bytesLeft, dataSize);
                     if (feof(file)) {
                         printf("Debug: Reached end of file\n");
                     } else if (ferror(file)) {
@@ -72,9 +74,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                     exit(1);
                 }
 
-                printf("Debug: Successfully read %zu bytes from file\n", bytesRead);
+                printf("Debug: Successfully read %zu bytes from file\n", bytesLeft);
 
-                int packetSize;
                 unsigned char *dataPacket = getDataPacket(sequence, data, dataSize, &packetSize);
                 if (llwrite(dataPacket, packetSize) == -1) {
                     fprintf(stderr, "Error: Failed to send data packet\n");
@@ -88,7 +89,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 sequence = (sequence + 1) % 256;
                 bytesLeft -= dataSize;
 
-                printf("Debug: Remaining file size = %ld bytes\n", fileSize);
+                printf("Debug: Remaining file size = %ld bytes\n", bytesLeft);
             }
 
             unsigned char *endControlPacket = getControlPacket(3, filename, 0, &controlPacketSize);
@@ -100,7 +101,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             }
             free(endControlPacket);
             
-            fclose(file);
             llclose(0);
             break;
 
@@ -135,19 +135,16 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             }
             free(filenameReceived);
 
-            while (1) {
-                packetSize = llread(packet);
-                if (packetSize < 0) {
-                    fprintf(stderr, "Error: Failed to read data packet\n");
-                    break;
+            while (1) {    
+                while ((packetSize = llread(packet)) < 0);
+                if(packetSize == 0) break;
+                else if(packet[0] != 3){
+                    unsigned char *buffer = (unsigned char*)malloc(packetSize);
+                    parseDataPacket(packet, packetSize, buffer);
+                    fwrite(buffer, sizeof(unsigned char), packetSize-4, newFile);
+                    free(buffer);
                 }
-
-                if (packetSize == 0 || packet[0] == 3) break;
-
-                unsigned char *dataBuffer = (unsigned char *) malloc(packetSize - 4);
-                parseDataPacket(packet, packetSize, dataBuffer);
-                fwrite(dataBuffer, sizeof(unsigned char), packetSize - 4, newFile);
-                free(dataBuffer);
+                else continue;
             }
 
             fclose(newFile);
@@ -254,14 +251,14 @@ unsigned char * getControlPacket(const unsigned int c, const char* filename, lon
 
     unsigned int index = 0;
     packet[index++] = (unsigned char) c;
-    packet[index++] = fileSizeType;
+    packet[index++] = 0; // file size type
     packet[index++] = fileSizeLength;
 
     for(int i = fileSizeLength - 1; i >= 0; i--) {
         packet[index++] = (length >> (i * 8)) & 0xFF;
     }
 
-    packet[index++] = fileNameType;
+    packet[index++] = 1; // file name type
     packet[index++] = fileNameLength;
     memcpy(packet + index, filename, fileNameLength);
  
@@ -276,10 +273,10 @@ unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int d
 
     int index = 0;
 
-    packet[index++] = 2;
+    packet[index++] = 2; // control field for data packet
     packet[index++] = sequence;
-    packet[index++] = (dataSize >> 8) & 0xFF;
-    packet[index++] = dataSize & 0xFF;
+    packet[index++] = (dataSize >> 8) & 0xFF; // high byte of data size
+    packet[index++] = dataSize & 0xFF; // low byte of data size
 
     memcpy(packet + index, data, dataSize); 
 
@@ -289,16 +286,17 @@ unsigned char * getDataPacket(unsigned char sequence, unsigned char *data, int d
 unsigned char *getData(FILE* spfd, long int fileLength) {
     unsigned char *data = (unsigned char *)malloc(fileLength);
     if (!data) {
-        perror("Memory allocation failed");
+        fprintf(stderr, "Error allocating memory for file data\n");
         return NULL;
     }
 
-    size_t bytesRead = fread(data, 1, fileLength, spfd);
-
+    size_t bytesRead = fread(data, sizeof(unsigned char), fileLength, spfd);
     if (bytesRead != fileLength) {
-        perror("File reading failed");
-        free(data);
-        return NULL;
+        if (feof(spfd)) {
+            printf("Debug: Reached end of file\n");
+        } else if (ferror(spfd)) {
+            printf("Debug: An error occurred while reading the file\n");
+        }
     }
 
     return data;
