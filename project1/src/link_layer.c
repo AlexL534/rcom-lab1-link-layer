@@ -436,7 +436,7 @@ int llread(unsigned char *packet) {
                                 printf("\n%d Error in data but duplicate frame, positive response bytes written\n", bytesW);
                                 free(packet);
                                 packet = NULL;
-                                packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+                                packet = (unsigned char *)malloc(PAYLOAD_SIZE_500);
                                 return 0;
                             } else {
                                 printf("\nError in data, asking for retransmission\n");
@@ -448,7 +448,7 @@ int llread(unsigned char *packet) {
                                 x = 0;*/
                                 free(packet);
                                 packet = NULL;
-                                packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+                                packet = (unsigned char *)malloc(PAYLOAD_SIZE_500);
                                 return -1;
                             }
                         }

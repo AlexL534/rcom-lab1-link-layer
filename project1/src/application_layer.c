@@ -53,14 +53,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             long int bytesLeft = fileSize;
 
             while (bytesLeft > 0) {
-                int dataSize = (bytesLeft > MAX_PAYLOAD_SIZE) ? MAX_PAYLOAD_SIZE : bytesLeft;
+                int dataSize = (bytesLeft > PAYLOAD_SIZE_500) ? PAYLOAD_SIZE_500 : bytesLeft;
                 unsigned char *data = (unsigned char *)malloc(dataSize);
 
                 memcpy(data, content, dataSize);
                 int packetSize;
                 unsigned char* packet = getDataPacket(sequence, data, dataSize, &packetSize);
 
-                if (dataSize > MAX_PAYLOAD_SIZE) {
+                if (dataSize > PAYLOAD_SIZE_500) {
                     fprintf(stderr, "Error: Payload size exceeded maximum limit\n");
                     free(packet);
                     free(data);
@@ -104,9 +104,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             break;
 
         case LlRx:
-            packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+            packet = (unsigned char *)malloc(PAYLOAD_SIZE_500);
             receivedFileSize = 0;
-            packetSize = llread(packet);
+            packetSize = 0;
+            while (packetSize <= 0) {
+                packetSize = llread(packet);
+            }
 
             if (packetSize < 0) {
                 fprintf(stderr, "Error: Failed to read start control packet\n");
