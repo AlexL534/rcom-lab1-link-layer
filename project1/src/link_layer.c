@@ -369,10 +369,11 @@ int llread(unsigned char *packet) {
                     break;
 
                 case A_RCV:
-                    if (byte == C_N(0) || byte == C_N(1)) {
+                    if (byte == C_N(0) || byte == C_N(1) || byte == DISC) {
                         state = C_RCV;
                         c = byte;
-                    } else if (byte == FLAG) state = FLAG_RCV;
+                    } 
+                    else if (byte == FLAG) state = FLAG_RCV;
                     else state = START_R;
                     break;
 
@@ -388,6 +389,7 @@ int llread(unsigned char *packet) {
                             printf("%d Duplicate frame, positive response bytes written\n", bytesW);
                             return 0;
                         }
+                        else if (c == DISC) closeReceiver();
                     } else if (byte == FLAG) state = FLAG_RCV;
                     else state = START_R;
                     break;
