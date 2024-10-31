@@ -554,6 +554,8 @@ int closeReceiver() {
 ////////////////////////////////////////////////
 int llclose(int showStatistics)
 {
+    unsigned char byte; 
+    ReceiverState state = START_R;
 
     switch (isTx) {
 
@@ -634,9 +636,7 @@ int llclose(int showStatistics)
         else printf("Did not receive disconnect command from receiver (retry limit reached)\n");
         break;
 
-    case FALSE:
-        unsigned char byte; 
-        ReceiverState state = START_R;
+    case FALSE: 
 
         while (state != STOP_RCV) {
             if (readByteSerialPort(&byte)) {
