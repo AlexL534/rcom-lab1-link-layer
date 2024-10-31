@@ -127,14 +127,13 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
             while (1) {    
                 while ((packetSize = llread(packet)) < 0);
-                if(packetSize == 0) break;
-                else if(packet[0] != 3){
+                if(packet[0] != 3){
                     unsigned char *buffer = (unsigned char*)malloc(packetSize);
                     parseDataPacket(packet, packetSize, buffer);
                     fwrite(buffer, sizeof(unsigned char), packetSize-4, newFile);
                     free(buffer);
                 }
-                else continue;
+                else break;
             }
 
             fclose(newFile);

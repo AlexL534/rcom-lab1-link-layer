@@ -519,7 +519,10 @@ int closeReceiver() {
                     break;
                 case BCC_OK_R:
                     printf("BCC\n");
-                    if (response_byte == FLAG) receiverState = STOP_RCV;
+                    if (response_byte == FLAG) {
+                        alarm(0);
+                        receiverState = STOP_RCV;
+                    }
                     else receiverState = START_R;
                     break;
                 case STOP_RCV:
