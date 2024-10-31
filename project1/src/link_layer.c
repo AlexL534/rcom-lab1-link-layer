@@ -469,12 +469,7 @@ unsigned char byteDestuff(unsigned char byte) {
 
 int closeReceiver() {
 
-    unsigned char supervisionFrame[5];
-    supervisionFrame[0] = FLAG;
-    supervisionFrame[1] = ADDRESS_SENT_RECEIVER;
-    supervisionFrame[2] = DISC;
-    supervisionFrame[3] = ADDRESS_SENT_RECEIVER ^ DISC;
-    supervisionFrame[4] = FLAG;
+    unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_SENT_RECEIVER, DISC, ADDRESS_SENT_RECEIVER ^ DISC, FLAG};
 
     ReceiverState receiverState = START_R;
 
@@ -484,8 +479,8 @@ int closeReceiver() {
 
     while (alarmCount <= retransmissions && receiverState != STOP_RCV) {
 
-        if (alarmEnabled == FALSE) {
-            int bytes = writeBytesSerialPort(supervisionFrame,5);
+        if (!alarmEnabled) {
+            int bytes = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
             printf("%d DISC bytes written to transmitor\n", bytes);
             alarm(timeout);
             
@@ -570,82 +565,49 @@ int llclose(int showStatistics)
         alarmEnabled = FALSE;
 
         while (alarmCount <= retransmissions && senderState != STOP_SDR) {
-            if (alarmEnabled == FALSE)
-            {
-                int bytes = writeBytesSerialPort(bufS,5);
-                printf("%d bytes written\n", bytes);
+            if (!alarmEnabled) {
+                int bytes = writeBytesSerialPort(bufS,FRAME_SIZE);
+                printf("%d bytes written (DISC sent)\n", bytes);
                 alarm(timeout);
-                
                 alarmEnabled = TRUE;
             }
 
             unsigned char response_byte;
 
             if (readByteSerialPort(&response_byte)) {
-                printf("0x%02X ", response_byte);
+                printf("Received byte: 0x%02X\n", response_byte);
                 switch(senderState) {
                     case START_S:
                         printf("start\n");
-                        if (response_byte == FLAG) {
-                            senderState = FLAG_SDR;
-                        }
-                        else {
-                            senderState = START_S;
-                        }
+                        if (response_byte == FLAG)  senderState = FLAG_SDR;
+                        else senderState = START_S;
                         break;
                     case FLAG_SDR:
                         printf("flag\n");
-                        if (response_byte == ADDRESS_SENT_RECEIVER) {
-                        
-                            senderState = A_SDR;
-                        }
-                        else if (response_byte == FLAG) {
-                        
-                            senderState = FLAG_SDR;
-                        }
-                        else {
-                            senderState = START_S;
-                        }
+                        if (response_byte == ADDRESS_SENT_RECEIVER) senderState = A_SDR;
+                        else if (response_byte == FLAG) senderState = FLAG_SDR;
+                        else senderState = START_S;
                         break;
                     case A_SDR:
                         printf("A\n");
-                        if (response_byte == DISC) {
-                            senderState = C_SDR;
-                        }
-                        else if (response_byte == FLAG) {
-                        
-                            senderState = FLAG_SDR;
-                        }
-                        else {
-                            senderState = START_S;
-                        }
+                        if (response_byte == DISC) senderState = C_SDR;
+                        else if (response_byte == FLAG) senderState = FLAG_SDR;
+                        else senderState = START_S;
                         break;
                     case C_SDR:
                         printf("C\n");
-                        if (response_byte == (ADDRESS_SENT_RECEIVER ^ DISC)) {
-                            senderState = BCC_OK_S;
-                        }
-                        else if (response_byte == FLAG) {
-                            
-                            senderState = FLAG_SDR;
-                        }
-                        else {
-                            
-                            senderState = START_S;
-                        }
+                        if (response_byte == (ADDRESS_SENT_RECEIVER ^ DISC)) senderState = BCC_OK_S;
+                        else if (response_byte == FLAG) senderState = FLAG_SDR;
+                        else senderState = START_S;
                         break;
                     case BCC_OK_S:
                         printf("BCC\n");
                         if (response_byte == FLAG) {
-                            
                             alarm(0);
-                            
                             senderState = STOP_SDR;
+                            printf("Received DISC acknowledgment\n");
                         }
-                        else {
-
-                            senderState = START_S;
-                        }
+                        else senderState = START_S;
                         break;
                     case STOP_SDR:
                         break;
@@ -660,14 +622,11 @@ int llclose(int showStatistics)
 
         if (senderState == STOP_SDR) {
             printf("Read DISC frame successfully.\n");
-            unsigned char uaFrame[5] = {FLAG, ADDRESS_ANSWER_TRANSMITTER, CONTROL_UA, ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA, FLAG};
-            writeBytesSerialPort(uaFrame, 5);
-            printf("Sent UA frame\n");
+            unsigned char uaFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_TRANSMITTER, CONTROL_UA, ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA, FLAG};
+            writeBytesSerialPort(uaFrame, FRAME_SIZE);
+            printf("Sent UA frame, disconnect completed\n");
         }
-
-        else {
-            printf("Did not receive disconnect command from receiver\n");
-        }
+        else printf("Did not receive disconnect command from receiver (retry limit reached)\n");
         break;
 
     case FALSE:
