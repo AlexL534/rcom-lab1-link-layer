@@ -35,7 +35,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             fseek(file,0L,SEEK_END);
             long int fileSize = ftell(file)-prev;
             fseek(file,prev,SEEK_SET);
-            printf("Debug: File size = %ld bytes\n", fileSize); //debug
+            printf("Info: File size = %ld bytes\n\n", fileSize); //debug
 
 
             unsigned int controlPacketSize;
@@ -80,7 +80,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
                 content += dataSize; 
 
-                printf("Debug: Payload size sent = %d bytes, Frame size (with headers) = %d bytes, remaining file size = %ld bytes\n", dataSize, packetSize, bytesLeft);                
+                printf("\n\nInfo:\nPayload size sent = %d bytes\nFrame size (with headers) = %d bytes\nRemaining file size = %ld bytes\n\n", dataSize, packetSize, bytesLeft);                
                 // Clean up
                 free(packet);
                 free(data);
@@ -88,7 +88,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 // Update the sequence number
                 sequence = (sequence + 1) % 256;
 
-                printf("Debug: Remaining file size = %ld bytes\n", bytesLeft);
+                printf("Info: Remaining file size = %ld bytes\n", bytesLeft);
             }
 
             unsigned char *endControlPacket = getControlPacket(3, filename, 0, &controlPacketSize);
@@ -159,6 +159,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             exit(1);
         break;
     }
+    printf("\n\nEnding Program!");
 }
 
 unsigned char* parseControlPacket(unsigned char* packet, int size, unsigned long int *fileSize) {
@@ -294,9 +295,9 @@ unsigned char *getData(FILE* spfd, long int fileLength) {
     size_t bytesRead = fread(data, sizeof(unsigned char), fileLength, spfd);
     if (bytesRead != fileLength) {
         if (feof(spfd)) {
-            printf("Debug: Reached end of file\n");
+            printf("Info: Reached end of file\n");
         } else if (ferror(spfd)) {
-            printf("Debug: An error occurred while reading the file\n");
+            printf("Error: An error occurred while reading the file\n");
         }
     }
 

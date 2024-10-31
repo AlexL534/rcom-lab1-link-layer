@@ -25,7 +25,7 @@ void alarmHandler(int signal)
     alarmEnabled = FALSE;
     alarmCount++;
 
-    printf("Alarm #%d\n", alarmCount);
+    printf("\nAlarm #%d\n", alarmCount);
 }
 
 unsigned char checkControl() {
@@ -91,7 +91,7 @@ int llopen(LinkLayer connectionParameters) {
     switch (connectionParameters.role) {
         case LlTx: {
             isTx = TRUE;
-            printf("\nNew termios structure set\n");
+            printf("\nNew termios structure set\n\n");
 
             (void)signal(SIGALRM, alarmHandler);
 
@@ -164,19 +164,19 @@ int llopen(LinkLayer connectionParameters) {
 
             if (senderState == STOP_SDR) {
                 //printf("STOP\n");
-                printf("Received UA frame successfully.\n");
+                printf("\nReceived UA frame successfully\n\nConnection sucessfull!\n\n");
                 return 1;
             }
 
             else {
-                printf("No response from receiver\nCanceling operation...\n");
+                printf("\nNo response from receiver\n\nCanceling operation...\n\n");
                 return -1;
             }
             break;
         }
 
         case LlRx: {
-            printf("New termios structure set\n");
+            printf("\nNew termios structure set\n");
 
             // Loop for input
             unsigned char byte2;
@@ -227,7 +227,7 @@ int llopen(LinkLayer connectionParameters) {
                 perror("Failed to send UA frame");
                 return -1; 
             }
-            printf("Sent UA frame\n");
+            printf("\nSent UA frame\n\n");
             return 1;
             break;
         }
@@ -260,7 +260,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
         BCC2 ^= buf[i]; // doing XOR of each byte with BCC2
     }
 
-    printf("BCC2 = 0x%02X\n", BCC2); // Debugging BCC2 value
+    printf("Frame BCC2 = 0x%02X\n", BCC2); // Debugging BCC2 value
 
     int j = 4;
     for (int i = 0; i < bufSize; i++) {
@@ -309,18 +309,18 @@ int llwrite(const unsigned char *buf, int bufSize) {
                 return -1; // Handle error
             }
             alarm(timeout);
-            printf("%d bytes written\n", bytesW); // Debugging: bytes written to serial port
+            printf("%d bytes written\n\n", bytesW); // Debugging: bytes written to serial port
         }
 
         unsigned char command = checkControl();
-        printf("command = 0x%02X\n", command); // Debugging: command received
+        printf("Receiver response = 0x%02X\n", command); // Debugging: command received
 
         if (command == REJ0 || command == REJ1) {
             rejected = 1;
         } else if ((command == RR0 && frameNumberT == 1) || (command == RR1 && frameNumberT == 0)) {
             accepted = 1;
             frameNumberT = (frameNumberT + 1) % 2;
-            printf("Frame number = 0x%02X\n", frameNumberT); // Debugging: frame number
+            printf("New Frame number = 0x%02X\n\n", frameNumberT); // Debugging: frame number
         }
 
         if (accepted) {
@@ -336,10 +336,10 @@ int llwrite(const unsigned char *buf, int bufSize) {
 
     free(stuffed_frame);
     if (accepted) {
-        printf("Frame delivered with success\n");
+        printf("Frame delivered with success!\n\n");
         return inf_frame_size;
     } else {
-        printf("Frame could not be delivered\n");
+        printf("Frame could not be delivered..\n\n");
         return -1;
     }
 
@@ -387,7 +387,7 @@ int llread(unsigned char *packet) {
                             unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
 
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                            printf("\nDuplicate frame, %d positive response bytes written\n", bytesW);
+                            printf("\nReceived duplicated data frame\n%d positive response bytes written\n", bytesW);
                             return 0;
                         }
                         //else if (c == DISC) state = DISC_RCV;
@@ -407,7 +407,7 @@ int llread(unsigned char *packet) {
                     if (byte == ESC) state = ESC_FOUND;
                     else if (byte == FLAG) {
                         unsigned char bcc2 = packet[--x];
-                        printf("\nBCC2 = 0x%02X\n", bcc2);
+                        printf("\nFrame BCC2 = 0x%02X\n", bcc2);
 
                         unsigned char acc = 0;
                         for (unsigned int i = 0; i < x; i++) {
@@ -415,7 +415,7 @@ int llread(unsigned char *packet) {
                             //printf("0x%02X ", packet[i]); // Debugging: packet content
                         }
 
-                        printf("\nACC2 = 0x%02X\n", acc);
+                        printf("\nCalculated BCC2 = 0x%02X\n", acc);
 
                         if (bcc2 == acc) {
                             state = STOP_RCV;
@@ -423,7 +423,7 @@ int llread(unsigned char *packet) {
                             unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
 
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                            printf("\n%d positive response bytes written\n", bytesW);
+                            printf("\nGot new frame!\n%d positive response bytes written\n", bytesW);
                             frameNumberR = (frameNumberR + 1) % 2;
                             return x;
                         } else {
@@ -433,7 +433,7 @@ int llread(unsigned char *packet) {
                                 unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
 
                                 int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                                printf("\n%d Error in data but duplicate frame, positive response bytes written\n", bytesW);
+                                printf("\n%d Error in frame data but is a duplicated frame.\n positive response bytes written\n", bytesW);
                                 free(packet);
                                 packet = NULL;
                                 packet = (unsigned char *)malloc(PAYLOAD_SIZE_500);
@@ -499,7 +499,7 @@ int closeReceiver() {
 
         if (!alarmEnabled) {
             int bytes = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-            printf("%d DISC bytes written to transmitor\n", bytes);
+            printf("\n%d DISC bytes written to transmitter\n\n", bytes);
             alarm(timeout);
             
             alarmEnabled = TRUE;
@@ -508,33 +508,33 @@ int closeReceiver() {
         unsigned char response_byte;
 
         if (readByteSerialPort(&response_byte)) {
-            printf("0x%02X ", response_byte);
+            //printf("0x%02X ", response_byte);
             switch(receiverState) {
                 case START_R:
-                    printf("start\n");
+                    //printf("start\n");
                     if (response_byte == FLAG) receiverState = FLAG_RCV;
                     else receiverState = START_R;
                     break;
                 case FLAG_RCV:
-                    printf("flag\n");
+                    //printf("flag\n");
                     if (response_byte == ADDRESS_ANSWER_TRANSMITTER) receiverState = A_RCV;
                     else if (response_byte == FLAG) receiverState = FLAG_RCV;
                     else receiverState = START_R;
                     break;
                 case A_RCV:
-                    printf("A\n");
+                    //printf("A\n");
                     if (response_byte == CONTROL_UA) receiverState = C_RCV;
                     else if (response_byte == FLAG) receiverState = FLAG_RCV;
                     else receiverState = START_R;
                     break;
                 case C_RCV:
-                    printf("C\n");
+                    //printf("C\n");
                     if (response_byte == (ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA)) receiverState = BCC_OK_R;
                     else if (response_byte == FLAG) receiverState = FLAG_RCV;
                     else receiverState = START_R;
                     break;
                 case BCC_OK_R:
-                    printf("BCC\n");
+                    //printf("BCC\n");
                     if (response_byte == FLAG) {
                         alarm(0);
                         receiverState = STOP_RCV;
@@ -553,12 +553,12 @@ int closeReceiver() {
     alarm(0);
 
     if (receiverState == STOP_RCV) {
-        printf("Received UA frame successfully.\n");
+        printf("Received UA frame successfully\n\n");
         return 1;
     }
 
     else {
-        printf("Did not receive UA from transmitter\n");
+        printf("Did not receive UA from transmitter\n\n");
         return -1;
     }
 
@@ -590,7 +590,7 @@ int llclose(int showStatistics)
         while (alarmCount <= retransmissions && senderState != STOP_SDR) {
             if (!alarmEnabled) {
                 int bytes = writeBytesSerialPort(bufS,FRAME_SIZE);
-                printf("%d bytes written (DISC sent)\n", bytes);
+                printf("\n%d DISC command bytes written to receiver\n\n", bytes);
                 alarm(timeout);
                 alarmEnabled = TRUE;
             }
@@ -598,37 +598,37 @@ int llclose(int showStatistics)
             unsigned char response_byte;
 
             if (readByteSerialPort(&response_byte)) {
-                printf("Received byte: 0x%02X\n", response_byte);
+                //printf("Received byte: 0x%02X\n", response_byte);
                 switch(senderState) {
                     case START_S:
-                        printf("start\n");
+                        //printf("start\n");
                         if (response_byte == FLAG)  senderState = FLAG_SDR;
                         else senderState = START_S;
                         break;
                     case FLAG_SDR:
-                        printf("flag\n");
+                        //printf("flag\n");
                         if (response_byte == ADDRESS_SENT_RECEIVER) senderState = A_SDR;
                         else if (response_byte == FLAG) senderState = FLAG_SDR;
                         else senderState = START_S;
                         break;
                     case A_SDR:
-                        printf("A\n");
+                        //printf("A\n");
                         if (response_byte == DISC) senderState = C_SDR;
                         else if (response_byte == FLAG) senderState = FLAG_SDR;
                         else senderState = START_S;
                         break;
                     case C_SDR:
-                        printf("C\n");
+                        //printf("C\n");
                         if (response_byte == (ADDRESS_SENT_RECEIVER ^ DISC)) senderState = BCC_OK_S;
                         else if (response_byte == FLAG) senderState = FLAG_SDR;
                         else senderState = START_S;
                         break;
                     case BCC_OK_S:
-                        printf("BCC\n");
+                        //printf("BCC\n");
                         if (response_byte == FLAG) {
                             alarm(0);
                             senderState = STOP_SDR;
-                            printf("Received DISC acknowledgment\n");
+                            printf("Received DISC acknowledgment\n\n");
                         }
                         else senderState = START_S;
                         break;
@@ -644,12 +644,12 @@ int llclose(int showStatistics)
         alarm(0);
 
         if (senderState == STOP_SDR) {
-            printf("Read DISC frame successfully.\n");
+            printf("Read DISC frame successfully\n\n");
             unsigned char uaFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_TRANSMITTER, CONTROL_UA, ADDRESS_ANSWER_TRANSMITTER ^ CONTROL_UA, FLAG};
             writeBytesSerialPort(uaFrame, FRAME_SIZE);
-            printf("Sent UA frame, disconnect completed\n");
+            printf("Sent UA frame\n\nDisconnect completed!\n\n");
         }
-        else printf("Did not receive disconnect command from receiver (retry limit reached)\n");
+        else printf("Did not receive DISC command from receiver (retry limit reached)\n\n");
         break;
 
     case FALSE: 
@@ -683,7 +683,7 @@ int llclose(int showStatistics)
 
                 case DISC_RCV:
                     if (byte == FLAG) {
-                        printf("Disc received from transmitter\n");
+                        printf("\nDISC command received from transmitter\n\n");
                         state = STOP_RCV;
                     }
                     else {
@@ -704,7 +704,7 @@ int llclose(int showStatistics)
         if (state == STOP_RCV) {
             printf("Sending DISC to transmitter\n");
             if (closeReceiver() == -1) {
-                printf("Error in disconecting\n");
+                printf("Error on disconecting\n\n");
                 return -1;
             }
         }
