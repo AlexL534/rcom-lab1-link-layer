@@ -357,6 +357,7 @@ int llread(unsigned char *packet) {
 
     while (state != STOP_RCV) {
         if (readByteSerialPort(&byte)) {
+            //printf("0x%02X ", byte);
             switch (state) {
                 case START_R:
                     if (byte == FLAG) state = FLAG_RCV;
@@ -386,7 +387,7 @@ int llread(unsigned char *packet) {
                             unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
 
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                            printf("%d Duplicate frame, positive response bytes written\n", bytesW);
+                            printf("\nDuplicate frame, %d positive response bytes written\n", bytesW);
                             return 0;
                         }
                         //else if (c == DISC) state = DISC_RCV;
@@ -406,7 +407,7 @@ int llread(unsigned char *packet) {
                     if (byte == ESC) state = ESC_FOUND;
                     else if (byte == FLAG) {
                         unsigned char bcc2 = packet[--x];
-                        printf("BCC2 = 0x%02X\n", bcc2);
+                        printf("\nBCC2 = 0x%02X\n", bcc2);
 
                         unsigned char acc = 0;
                         for (unsigned int i = 0; i < x; i++) {
@@ -422,7 +423,7 @@ int llread(unsigned char *packet) {
                             unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
 
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                            printf("%d positive response bytes written\n", bytesW);
+                            printf("\n%d positive response bytes written\n", bytesW);
                             frameNumberR = (frameNumberR + 1) % 2;
                             return x;
                         } else {
@@ -432,17 +433,23 @@ int llread(unsigned char *packet) {
                                 unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
 
                                 int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                                printf("%d Error in data but duplicate frame, positive response bytes written\n", bytesW);
+                                printf("\n%d Error in data but duplicate frame, positive response bytes written\n", bytesW);
+                                free(packet);
+                                packet = NULL;
+                                packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
                                 return 0;
                             } else {
-                                printf("Error in data, asking for retransmission\n");
+                                printf("\nError in data, asking for retransmission\n");
                                 unsigned char cResponse = frameNumberR == 0 ? REJ0 : REJ1;
                                 unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse};
                                 int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
-                                printf("%d negative response bytes written\n", bytesW);
-                                state = START_R;
-                                x = 0;
-                                //return -1;
+                                printf("\n%d negative response bytes written\n", bytesW);
+                                /*state = START_R;
+                                x = 0;*/
+                                free(packet);
+                                packet = NULL;
+                                packet = (unsigned char *)malloc(MAX_PAYLOAD_SIZE);
+                                return -1;
                             }
                         }
                     } else {
