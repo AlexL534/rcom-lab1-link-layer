@@ -123,8 +123,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 exit(-1);
             }
 
-            FILE *newFile = fopen((char*)filename, "wb+");
-            if (newFile == NULL) {
+            file = fopen((char*)filename, "wb+");
+            if (file == NULL) {
                 perror("Error creating file\n");
                 free(packet);
                 llclose(0);
@@ -136,13 +136,13 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
                 if(packet[0] != 3){
                     unsigned char *buffer = (unsigned char*)malloc(packetSize);
                     parseDataPacket(packet, packetSize, buffer);
-                    fwrite(buffer, sizeof(unsigned char), packetSize-4, newFile);
+                    fwrite(buffer, sizeof(unsigned char), packetSize-4, file);
                     free(buffer);
                 }
                 else break;
             }
 
-            fclose(newFile);
+            fclose(file);
             free(packet);
             llclose(0);
             break;
