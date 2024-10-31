@@ -62,18 +62,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
                 content += dataSize; 
 
-                if (bytesLeft != dataSize) {
-                    fprintf(stderr, "Error: Could not read file data, bytes read: %zu, expected: %d\n", bytesLeft, dataSize);
-                    if (feof(file)) {
-                        printf("Debug: Reached end of file\n");
-                    } else if (ferror(file)) {
-                        printf("Debug: An error occurred while reading the file\n");
-                    }
-                    free(data);
-                    fclose(file);
-                    exit(1);
-                }
-
                 printf("Debug: Successfully read %zu bytes from file\n", bytesLeft);
 
                 unsigned char *dataPacket = getDataPacket(sequence, data, dataSize, &packetSize);
