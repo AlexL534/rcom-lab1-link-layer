@@ -159,7 +159,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             exit(1);
         break;
     }
-    printf("\n\nEnding Program!");
+    printf("\n\nEnding Program!\n");
 }
 
 unsigned char* parseControlPacket(unsigned char* packet, int size, unsigned long int *fileSize) {
