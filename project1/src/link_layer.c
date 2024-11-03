@@ -33,7 +33,9 @@ void alarmHandler(int signal) {
     alarmEnabled = FALSE;
     alarmCount++;
     timeouts++;
-    printf("\nAlarm #%d\n\n", alarmCount);
+    if (alarmCount > 0) {
+        printf("\nAlarm #%d\n\n", alarmCount);
+    }
 }
 
 unsigned char checkControl() {
@@ -341,15 +343,15 @@ int llwrite(const unsigned char *buf, int bufSize) {
         } else if (rejected) {
             alarm(0);
             alarmEnabled = FALSE;
-            alarmCount = 0;
+            alarmCount = -1;
             current_transmission = 0;
             printf("Frame was rejected. Resending data bytes.\n"); // Debugging: bytes rewritten on rejection
         }
     }
 
     alarm(0);
-
     free(stuffed_frame);
+
     if (accepted) {
         printf("Frame delivered with success!\n\n");
         return inf_frame_size;
