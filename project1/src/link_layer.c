@@ -317,6 +317,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
             framesSent++;
             if (bytesW < 0) {
                 perror("Failed to write bytes to serial port");
+                free(stuffed_frame);
                 return -1; // Handle error
             }
             alarm(timeout);
