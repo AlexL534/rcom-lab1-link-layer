@@ -19,9 +19,14 @@ int alarmCount = 0;
 int retransmissions = 0;
 int timeout = 0;
 
+//statistics
+int framesSent = 0;
+int framesReceived = 0;
+int retransmissionsNumber = 0;
+int timeouts = 0;
+
 // Alarm function handler
-void alarmHandler(int signal)
-{
+void alarmHandler(int signal) {
     alarmEnabled = FALSE;
     alarmCount++;
 
@@ -304,6 +309,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
             if (current_transmission > retransmissions + 1) break;
             alarmEnabled = TRUE;
             int bytesW = writeBytesSerialPort(stuffed_frame, j);
+            framesSent++;
             if (bytesW < 0) {
                 perror("Failed to write bytes to serial port");
                 return -1; // Handle error
@@ -418,6 +424,7 @@ int llread(unsigned char *packet) {
                         printf("\nCalculated BCC2 = 0x%02X\n", acc);
 
                         if (bcc2 == acc) {
+                            framesReceived++;
                             state = STOP_RCV;
                             unsigned char cResponse = frameNumberR == 0 ? RR1 : RR0;
                             unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse, FLAG};
@@ -650,6 +657,12 @@ int llclose(int showStatistics)
             printf("Sent UA frame\n\nDisconnect completed!\n\n");
         }
         else printf("Did not receive DISC command from receiver (retry limit reached)\n\n");
+
+                if (showStatistics) {
+            printf("Communication Statistics:\n");
+            printf("Total Frames Sent: %d\n", framesSent);
+        }
+        
         break;
 
     case FALSE: 
@@ -707,6 +720,11 @@ int llclose(int showStatistics)
                 printf("Error on disconecting\n\n");
                 return -1;
             }
+        }
+
+        if (showStatistics) {
+            printf("Communication Statistics:\n");
+            printf("Total Frames Received: %d\n", framesReceived);
         }
 
         break;

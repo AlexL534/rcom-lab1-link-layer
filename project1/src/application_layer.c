@@ -100,7 +100,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             }
             free(endControlPacket);
             
-            llclose(0);
+            llclose(1);
             break;
 
         case LlRx:
@@ -114,7 +114,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             if (packetSize < 0) {
                 fprintf(stderr, "Error: Failed to read start control packet\n");
                 free(packet);
-                llclose(0);
+                llclose(1);
                 exit(1);
             }   
 
@@ -122,7 +122,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             if (filenameReceived == NULL) {
                 fprintf(stderr, "Error: Could not parse start control packet\n");
                 free(packet);
-                llclose(0);
+                llclose(1);
                 exit(-1);
             }
 
@@ -130,7 +130,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
             if (file == NULL) {
                 perror("Error creating file\n");
                 free(packet);
-                llclose(0);
+                llclose(1);
                 exit(-1);
             }
 
@@ -150,12 +150,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate, in
 
             fclose(file);
             free(packet);
-            llclose(0);
+            llclose(1);
             break;
 
         default:
             fprintf(stderr, "Error: Unknown role\n");
-            llclose(0);
+            llclose(1);
             exit(1);
         break;
     }
@@ -324,7 +324,7 @@ unsigned char *getData(FILE* spfd, long int fileLength) {
             exit(2);
         }
 
-        if (llclose(0) == -1) {
+        if (llclose(1) == -1) {
             printf("Error on closing connection\n");
             exit(4);
         }

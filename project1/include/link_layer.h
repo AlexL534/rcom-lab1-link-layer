@@ -97,6 +97,10 @@ typedef struct
 #define FALSE 0
 #define TRUE 1
 
+unsigned char checkControl();
+int closeReceiver();
+unsigned char byteDestuff(unsigned char byte);
+
 // Open a connection using the "port" parameters defined in struct linkLayer.
 // Return "1" on success or "-1" on error.
 int llopen(LinkLayer connectionParameters);
@@ -113,9 +117,5 @@ int llread(unsigned char *packet);
 // if showStatistics == TRUE, link layer should print statistics in the console on close.
 // Return "1" on success or "-1" on error.
 int llclose(int showStatistics);
-
-unsigned char checkControl();
-int closeReceiver();
-unsigned char byteDestuff(unsigned char byte);
 
 #endif // _LINK_LAYER_H_
