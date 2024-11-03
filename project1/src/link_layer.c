@@ -29,7 +29,7 @@ int timeouts = 0;
 void alarmHandler(int signal) {
     alarmEnabled = FALSE;
     alarmCount++;
-
+    timeouts++;
     printf("\nAlarm #%d\n", alarmCount);
 }
 
@@ -664,6 +664,7 @@ int llclose(int showStatistics)
                 if (showStatistics) {
             printf("Communication Statistics:\n");
             printf("Total Frames Sent: %d\n", framesSent);
+            printf("Number of timeouts: %d\n", timeouts);
         }
         
         break;
