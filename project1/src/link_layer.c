@@ -336,6 +336,7 @@ int llwrite(const unsigned char *buf, int bufSize) {
             alarm(0);
             alarmEnabled = FALSE;
             alarmCount = 0;
+            current_transmission = 0;
             printf("Frame was rejected. Resending data bytes.\n"); // Debugging: bytes rewritten on rejection
         }
     }
