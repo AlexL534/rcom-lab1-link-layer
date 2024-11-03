@@ -32,7 +32,7 @@ void alarmHandler(int signal) {
     alarmEnabled = FALSE;
     alarmCount++;
     timeouts++;
-    printf("\nAlarm #%d\n", alarmCount);
+    printf("\nAlarm #%d\n\n", alarmCount);
 }
 
 unsigned char checkControl() {
