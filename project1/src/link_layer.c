@@ -26,6 +26,7 @@ int retransmissionsNumber = 0;
 int timeouts = 0;
 int framesRejected = 0;
 clock_t startTime;
+int duplicateFrames = 0;
 
 // Alarm function handler
 void alarmHandler(int signal) {
@@ -401,6 +402,7 @@ int llread(unsigned char *packet) {
 
                             int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
                             printf("\nReceived duplicated data frame\n%d positive response bytes written\n", bytesW);
+                            duplicateFrames++;
                             return 0;
                         }
                         //else if (c == DISC) state = DISC_RCV;
@@ -674,6 +676,7 @@ int llclose(int showStatistics)
             printf("Data Frames Sent: %d\n", framesSent);
             printf("Number of timeouts: %d\n", timeouts);
             printf("Total execution time: %.2f seconds\n", elapsedTime);
+            printf("Number of duplicate frames received: %d\n", duplicateFrames);
         }
         
         break;
