@@ -24,6 +24,8 @@ int framesSent = 0;
 int framesReceived = 0;
 int retransmissionsNumber = 0;
 int timeouts = 0;
+int framesRejected = 0;
+clock_t startTime;
 
 // Alarm function handler
 void alarmHandler(int signal) {
@@ -86,6 +88,8 @@ unsigned char checkControl() {
 // LLOPEN
 ////////////////////////////////////////////////
 int llopen(LinkLayer connectionParameters) {
+
+    startTime = clock();
 
     int spfd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);
     if (spfd < 0) return -1;
@@ -453,6 +457,7 @@ int llread(unsigned char *packet) {
                                 unsigned char cResponse = frameNumberR == 0 ? REJ0 : REJ1;
                                 unsigned char supervisionFrame[FRAME_SIZE] = {FLAG, ADDRESS_ANSWER_RECEIVER, cResponse, ADDRESS_ANSWER_RECEIVER ^ cResponse};
                                 int bytesW = writeBytesSerialPort(supervisionFrame, FRAME_SIZE);
+                                framesRejected++;
                                 printf("\n%d negative response bytes written\n", bytesW);
                                 /*state = START_R;
                                 x = 0;*/
@@ -661,10 +666,14 @@ int llclose(int showStatistics)
         }
         else printf("Did not receive DISC command from receiver (retry limit reached)\n\n");
 
-                if (showStatistics) {
+        clock_t endTime = clock();
+        double elapsedTime = (double)(endTime - startTime) / CLOCKS_PER_SEC;
+
+        if (showStatistics) {
             printf("Communication Statistics:\n");
-            printf("Total Frames Sent: %d\n", framesSent);
+            printf("Data Frames Sent: %d\n", framesSent);
             printf("Number of timeouts: %d\n", timeouts);
+            printf("Total execution time: %.2f seconds\n", elapsedTime);
         }
         
         break;
@@ -726,15 +735,18 @@ int llclose(int showStatistics)
             }
         }
 
+        
         if (showStatistics) {
             printf("Communication Statistics:\n");
-            printf("Total Frames Received: %d\n", framesReceived);
+            printf("Data Frames Received Sucessfully: %d\n", framesReceived);
+            printf("Frames rejected: %d\n", framesRejected);
         }
 
         break;
     default:
         break;
     }
+
 
     int clstat = closeSerialPort();
     return clstat;

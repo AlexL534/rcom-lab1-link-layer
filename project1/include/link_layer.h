@@ -15,6 +15,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 #define BAUDRATE B38400
 //MISC
