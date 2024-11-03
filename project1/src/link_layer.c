@@ -333,8 +333,10 @@ int llwrite(const unsigned char *buf, int bufSize) {
             alarm(0);
             break;
         } else if (rejected) {
-            int bytesW = writeBytesSerialPort(stuffed_frame, j);
-            printf("%d bytes rewritten\n", bytesW); // Debugging: bytes rewritten on rejection
+            alarm(0);
+            alarmEnabled = FALSE;
+            alarmCount = 0;
+            printf("Frame was rejected. Resending data bytes.\n"); // Debugging: bytes rewritten on rejection
         }
     }
 
