@@ -674,9 +674,9 @@ int llclose(int showStatistics)
         if (showStatistics) {
             printf("Communication Statistics:\n");
             printf("Data Frames Sent: %d\n", framesSent);
+            printf("Number of duplicate frames received: %d\n", duplicateFrames);
             printf("Number of timeouts: %d\n", timeouts);
             printf("Total execution time: %.2f seconds\n", elapsedTime);
-            printf("Number of duplicate frames received: %d\n", duplicateFrames);
         }
         
         break;
